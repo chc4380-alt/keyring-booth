@@ -3,7 +3,7 @@
 //  - 보통: Firestore(youthgroup-7f5d3)의 keyring/*, keyringPhotos, keyringFull
 //  - 주소 끝에 ?demo 를 붙이면 이 브라우저 안에서만 도는 연습 모드(서버에 아무것도 안 올라감)
 //
-//  keyring/config      행사 이름·접수 열림·키링 사진 크기 (누구나 읽기, 동아리·직원 쓰기)
+//  keyring/config      행사 이름·접수 열림·안내 문구 (누구나 읽기, 동아리·직원 쓰기)
 //  keyring/counter     접수 번호 {n} (누구나 1씩만 올림)
 //  keyring/secret      동아리 코드 {code} (직원만)
 //  keyringMembers/{uid} 동아리 코드로 들어온 기기 {code, at}
@@ -23,10 +23,10 @@ const KR_DEMO = new URLSearchParams(location.search).has('demo');
 const KR_DEFAULT_CONFIG = {
   eventName: '기록동아리 사진 키링 부스',
   open: true,
-  keyW: 40,
-  keyH: 40,
   notice: ''
 };
+// 사진은 셀피 KC-36IP 카드 용지 한 장(세로 54×86mm) 크기로만 받는다. 300dpi면 638×1016px.
+const KR_PHOTO = { w: 54, h: 86, paper: '셀피 카드 용지(KC-36IP)', px: 1016 };
 const KR_STATUS = {
   new: '대기',
   saved: '저장함',

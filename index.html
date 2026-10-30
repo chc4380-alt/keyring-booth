@@ -186,7 +186,7 @@
 </div>
 
 <div id="cropper">
-  <div class="head">손가락으로 움직이고 벌려서 <b>키링 모양에 맞춰</b> 주세요</div>
+  <div class="head">손가락으로 움직이고 벌려서 <b>카드 크기 틀에 맞춰</b> 주세요</div>
   <div id="stage"><canvas id="cropCanvas"></canvas></div>
   <div class="zoom"><span>－</span><input type="range" id="zoomRange" min="100" max="600" value="100"><span>＋</span></div>
   <div class="acts">
@@ -239,11 +239,11 @@ store.watchConfig(c => {
 });
 
 // ── 사진 칸 (한 번 신청에 1장) ──
-function frameRatio() { return (config.keyW || 40) / (config.keyH || 40); }
+function frameRatio() { return KR_PHOTO.w / KR_PHOTO.h; }
 
 function renderSlots() {
-  $('slotHint').textContent = `키링에 넣을 사진 1장을 골라 주세요. (가로 ${config.keyW}mm × 세로 ${config.keyH}mm)`;
-  const ar = `${config.keyW || 40} / ${config.keyH || 40}`;
+  $('slotHint').textContent = `키링에 넣을 사진 1장을 골라 주세요. 카드 크기(가로 ${KR_PHOTO.w}mm × 세로 ${KR_PHOTO.h}mm)로 맞춰요.`;
+  const ar = `${KR_PHOTO.w} / ${KR_PHOTO.h}`;
   let h = slots.map((s, i) => `
     <div class="slot" style="aspect-ratio:${ar}">
       <img src="${s.thumbBig}" alt="">
@@ -437,7 +437,7 @@ $('cropRotate').onclick = () => {
 };
 $('cropOk').onclick = () => {
   const c = currentCrop();
-  const out = renderOut(c, 1000);
+  const out = renderOut(c, KR_PHOTO.px);
   const entry = {
     base: crop.base, rot: crop.rot, crop: c,
     img: encodeJpeg(out, 800000),
