@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FBF6EE">
+<title>사진 키링 만들기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --bg: #FBF6EE;
+    --card: #FFFFFF;
+    --ink: #22201C;
+    --sub: #6E685F;
+    --line: rgba(34, 32, 28, .12);
+    --accent: #F2603F;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #FDE7DF;
+    --ok: #1E8A5A;
+    --ok-soft: #E1F3EA;
+    --warn: #B7791F;
+    --warn-soft: #FBF0D9;
+    --danger: #C0392B;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+    font-size: 16px; line-height: 1.55; word-break: keep-all;
+    min-height: 100vh; min-height: 100dvh;
+  }
+  button, input { font: inherit; color: inherit; }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px calc(120px + env(safe-area-inset-bottom)); }
+
+  header.top { padding: 8px 2px 18px; }
+  .eyebrow { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .02em; }
+  header.top h1 { font-size: 27px; line-height: 1.3; margin: 4px 0 6px; letter-spacing: -.02em; }
+  header.top p { margin: 0; color: var(--sub); font-size: 15px; }
+  .demo-badge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font-size: 12px; font-weight: 700; vertical-align: 2px; }
+
+  .notice { background: var(--accent-soft); border-radius: 14px; padding: 12px 14px; font-size: 14.5px; margin-bottom: 14px; white-space: pre-wrap; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 16px; margin-bottom: 14px; }
+  .card h2 { font-size: 17px; margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .step { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; align-items: center; justify-content: center; flex: none; }
+  .card .hint { color: var(--sub); font-size: 14px; margin: 0 0 14px; }
+
+  .slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .slot { position: relative; border-radius: 12px; overflow: hidden; background: #F3EEE6; }
+  .slot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .slot .tools { position: absolute; left: 0; right: 0; bottom: 0; display: flex; }
+  .slot .tools button { flex: 1; border: 0; padding: 9px 0; background: rgba(20, 18, 16, .62); color: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+  .slot .tools button + button { border-left: 1px solid rgba(255,255,255,.25); }
+  .slot .num { position: absolute; top: 8px; left: 8px; background: rgba(20,18,16,.62); color: #fff; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .add-tile { border: 2px dashed rgba(34,32,28,.22); background: transparent; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: var(--sub); font-weight: 600; font-size: 14px; }
+  .add-tile .plus { font-size: 30px; line-height: 1; color: var(--accent); }
+  .add-tile:active { background: rgba(0,0,0,.03); }
+
+  .field { display: block; width: 100%; border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 14px; font-size: 17px; background: #fff; outline: none; }
+  .field:focus { border-color: var(--accent); }
+  .agree { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; color: var(--sub); padding: 4px 2px 0; cursor: pointer; }
+  .agree input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+
+  .bottom { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to top, var(--bg) 70%, rgba(251,246,238,0)); }
+  .bottom .inner { max-width: 480px; margin: 0 auto; }
+  .btn { display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px; border: 0; border-radius: 14px; padding: 16px; font-size: 17px; font-weight: 700; cursor: pointer; }
+  .btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: 0 6px 18px rgba(242, 96, 63, .28); }
+  .btn-primary:disabled { background: #D9D2C8; box-shadow: none; color: #fff; cursor: default; }
+  .btn-ghost { background: #fff; border: 1.5px solid var(--line); }
+  .why { text-align: center; font-size: 13px; color: var(--sub); margin-top: 8px; min-height: 1em; }
+  .err { color: var(--danger); }
+
+  .mine h3 { font-size: 15px; margin: 6px 2px 8px; color: var(--sub); }
+  .mine-row { display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; }
+  .mine-row .no { font-size: 20px; font-weight: 800; min-width: 52px; }
+  .mine-row .meta { flex: 1; font-size: 14px; color: var(--sub); }
+  .chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .chip.new { background: var(--warn-soft); color: var(--warn); }
+  .chip.printed { background: var(--accent-soft); color: var(--accent); }
+  .chip.done { background: var(--ok-soft); color: var(--ok); }
+  .chip.gone { background: #EEE; color: #888; }
+
+  /* 접수 완료 화면 */
+  .done { text-align: center; padding-top: 18px; }
+  .done .label { font-size: 15px; color: var(--sub); font-weight: 600; }
+  .done .big { font-size: 112px; font-weight: 900; line-height: 1; letter-spacing: -.04em; margin: 8px 0 4px; color: var(--accent); }
+  .done .who { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+  .done .state { display: inline-block; font-size: 16px; padding: 8px 18px; border-radius: 999px; }
+  .done .msg { margin: 18px auto 20px; color: var(--sub); font-size: 15.5px; max-width: 320px; }
+  .done .thumbs { display: flex; justify-content: center; gap: 10px; margin-bottom: 26px; }
+  .done .thumbs img { width: 92px; border-radius: 10px; border: 1px solid var(--line); }
+
+  .center-msg { text-align: center; padding: 70px 10px; color: var(--sub); }
+  .center-msg .emoji { font-size: 54px; }
+  .center-msg h2 { color: var(--ink); font-size: 21px; margin: 12px 0 8px; }
+
+  /* 사진 맞추기 */
+  #cropper { position: fixed; inset: 0; z-index: 50; background: #111; display: none; flex-direction: column; color: #fff; touch-action: none; }
+  #cropper.on { display: flex; }
+  #cropper .head { padding: calc(12px + env(safe-area-inset-top)) 16px 6px; text-align: center; font-size: 15px; color: rgba(255,255,255,.85); }
+  #cropper .head b { color: #fff; }
+  #stage { flex: 1; position: relative; min-height: 0; }
+  #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+  #cropper .zoom { display: flex; align-items: center; gap: 12px; padding: 8px 22px; }
+  #cropper .zoom input { flex: 1; accent-color: var(--accent); }
+  #cropper .zoom span { font-size: 18px; opacity: .8; }
+  #cropper .acts { display: flex; gap: 10px; padding: 8px 16px calc(14px + env(safe-area-inset-bottom)); }
+  #cropper .acts button { flex: 1; border: 0; border-radius: 14px; padding: 15px 0; font-size: 16px; font-weight: 700; cursor: pointer; }
+  #cropper .acts .c-cancel { background: rgba(255,255,255,.12); color: #fff; flex: .8; }
+  #cropper .acts .c-rot { background: rgba(255,255,255,.12); color: #fff; flex: .6; }
+  #cropper .acts .c-ok { background: var(--accent); color: #fff; }
+
+  .loading { position: fixed; inset: 0; z-index: 60; background: rgba(251,246,238,.86); display: none; align-items: center; justify-content: center; flex-direction: column; gap: 12px; font-weight: 600; }
+  .loading.on { display: flex; }
+  .spin { width: 38px; height: 38px; border-radius: 50%; border: 4px solid var(--accent-soft); border-top-color: var(--accent); animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">📸 기록동아리 체험부스</div>
+    <h1 id="eventName">사진 키링 만들기</h1>
+    <p>사진을 보내 주시면 인화해서 키링으로 만들어 드려요.</p>
+  </header>
+
+  <div id="viewLoading" class="center-msg"><div class="spin" style="margin:0 auto"></div><p>불러오는 중…</p></div>
+
+  <div id="viewClosed" class="center-msg" hidden>
+    <div class="emoji">🙏</div>
+    <h2>지금은 접수를 받지 않아요</h2>
+    <p>부스 선생님께 여쭤봐 주세요.</p>
+  </div>
+
+  <div id="viewError" class="center-msg" hidden>
+    <div class="emoji">📶</div>
+    <h2>연결이 잘 안 돼요</h2>
+    <p id="errText">인터넷 연결을 확인하고 새로고침해 주세요.</p>
+    <button class="btn btn-ghost" style="max-width:220px;margin:16px auto 0" onclick="location.reload()">새로고침</button>
+  </div>
+
+  <div id="viewForm" hidden>
+    <div id="notice" class="notice" hidden></div>
+
+    <section class="card">
+      <h2><span class="step">1</span>사진 고르기</h2>
+      <p class="hint" id="slotHint">키링에 넣을 사진을 골라 주세요.</p>
+      <div class="slots" id="slots"></div>
+      <input type="file" id="fileInput" accept="image/*" hidden>
+    </section>
+
+    <section class="card">
+      <h2><span class="step">2</span>이름 또는 별명</h2>
+      <p class="hint">다 만들어지면 이 이름과 번호로 불러 드려요.</p>
+      <input class="field" id="nameInput" maxlength="12" placeholder="예) 김기록, 기록이" autocomplete="off" enterkeyhint="done">
+    </section>
+
+    <label class="agree"><input type="checkbox" id="agree">
+      <span>보낸 사진은 키링 인쇄에만 쓰고, 행사가 끝나면 바로 지워요. 이 내용에 동의해요.</span></label>
+  </div>
+
+  <div id="mineWrap" hidden>
+    <div class="mine" id="mineBox" hidden style="margin-top:26px">
+      <h3>내가 보낸 사진</h3>
+      <div id="mineList"></div>
+    </div>
+  </div>
+
+  <div id="viewDone" class="done" hidden>
+    <div class="label">접수 번호</div>
+    <div class="big" id="doneNo">0</div>
+    <div class="who" id="doneName"></div>
+    <div class="state chip new" id="doneState">접수됨</div>
+    <p class="msg" id="doneMsg"></p>
+    <div class="thumbs" id="doneThumbs"></div>
+    <button class="btn btn-ghost" id="againBtn">사진 더 보내기</button>
+  </div>
+</div>
+
+<div class="bottom" id="bottomBar" hidden>
+  <div class="inner">
+    <button class="btn btn-primary" id="sendBtn" disabled>사진 보내기</button>
+    <div class="why" id="sendWhy"></div>
+  </div>
+</div>
+
+<div id="cropper">
+  <div class="head">손가락으로 움직이고 벌려서 <b>키링 모양에 맞춰</b> 주세요</div>
+  <div id="stage"><canvas id="cropCanvas"></canvas></div>
+  <div class="zoom"><span>－</span><input type="range" id="zoomRange" min="100" max="600" value="100"><span>＋</span></div>
+  <div class="acts">
+    <button class="c-cancel" id="cropCancel">취소</button>
+    <button class="c-rot" id="cropRotate">↻ 돌리기</button>
+    <button class="c-ok" id="cropOk">이대로 쓰기</button>
+  </div>
+</div>
+
+<div class="loading" id="loading"><div class="spin"></div><div id="loadingText">보내는 중…</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js" integrity="sha384-ZaR6mWzmJtrRibZ1Vm7SoHFr8OXjyAuGAXalGDKqbxFT18oi/z+oZLIRFkpeNor1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js" integrity="sha384-Ke0FJhH7LyRqDxZ0wt+/OXV38yfQVu7g9VPEEGjYmB4RVOY/ta04uecRhsMwT7V3" crossorigin="anonymous"></script>
+<script src="store.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const store = krMakeStore();
+let config = Object.assign({}, KR_DEFAULT_CONFIG);
+let slots = [];          // [{ base, rot, crop:{sx,sy,sw,sh}, img, thumb, w, h }]
+let editingIndex = -1;   // 고치는 중인 칸 (-1이면 새 사진)
+let sending = false;
+const MINE_KEY = KR_DEMO ? 'kr_demo_mine' : 'kr_mine';
+
+function show(view) {
+  ['viewLoading', 'viewClosed', 'viewError', 'viewForm', 'viewDone'].forEach(v => { $(v).hidden = v !== view; });
+  $('bottomBar').hidden = view !== 'viewForm';
+  $('mineWrap').hidden = view !== 'viewForm' && view !== 'viewClosed';
+}
+
+// ── 행사 설정 ──
+let firstConfig = true;
+store.watchConfig(c => {
+  config = c;
+  $('eventName').innerHTML = krEsc(c.eventName || '사진 키링 만들기') + (KR_DEMO ? '<span class="demo-badge">연습 모드</span>' : '');
+  document.title = c.eventName || '사진 키링 만들기';
+  $('notice').hidden = !c.notice;
+  $('notice').textContent = c.notice || '';
+  if (slots.length > c.maxPerPerson) slots = slots.slice(0, c.maxPerPerson);
+  renderSlots();
+  updateSend();
+  const doneShown = !$('viewDone').hidden;
+  if (!c.open) { if (!doneShown) show('viewClosed'); }
+  else if (firstConfig || !$('viewClosed').hidden || !$('viewLoading').hidden) { if (!doneShown) show('viewForm'); }
+  firstConfig = false;
+}, e => {
+  console.warn(e);
+  $('errText').textContent = e && e.code === 'permission-denied'
+    ? '아직 부스 준비가 끝나지 않았어요. 잠시 뒤 다시 열어 주세요.'
+    : '인터넷 연결을 확인하고 새로고침해 주세요.';
+  show('viewError');
+});
+
+// ── 사진 칸 ──
+function frameRatio() { return (config.keyW || 40) / (config.keyH || 40); }
+
+function renderSlots() {
+  const max = config.maxPerPerson || 1;
+  $('slotHint').textContent = max > 1
+    ? `키링에 넣을 사진을 ${max}장까지 골라 주세요. (가로 ${config.keyW}mm × 세로 ${config.keyH}mm)`
+    : `키링에 넣을 사진 1장을 골라 주세요. (가로 ${config.keyW}mm × 세로 ${config.keyH}mm)`;
+  const ar = `${config.keyW || 40} / ${config.keyH || 40}`;
+  let h = slots.map((s, i) => `
+    <div class="slot" style="aspect-ratio:${ar}">
+      <img src="${s.thumbBig}" alt="">
+      ${max > 1 ? `<span class="num">${i + 1}</span>` : ''}
+      <div class="tools"><button onclick="editSlot(${i})">고치기</button><button onclick="removeSlot(${i})">빼기</button></div>
+    </div>`).join('');
+  if (slots.length < max) {
+    h += `<button class="add-tile" style="aspect-ratio:${ar}" onclick="pickPhoto()">
+      <span class="plus">＋</span>사진 추가${max > 1 ? ` (${slots.length}/${max})` : ''}</button>`;
+  }
+  $('slots').innerHTML = h;
+}
+
+function pickPhoto() { editingIndex = -1; $('fileInput').value = ''; $('fileInput').click(); }
+function editSlot(i) { editingIndex = i; openCropper(slots[i].base, slots[i].rot, slots[i].crop); }
+function removeSlot(i) { slots.splice(i, 1); renderSlots(); updateSend(); }
+
+$('fileInput').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  loading(true, '사진 여는 중…');
+  try {
+    const base = await loadBase(f);
+    loading(false);
+    openCropper(base, 0, null);
+  } catch (err) {
+    loading(false);
+    alert('이 사진은 열 수 없어요. 다른 사진을 골라 주세요.');
+  }
+});
+
+// 큰 사진은 긴 쪽 2400px로 줄여서 다룬다 (휴대폰 메모리·속도)
+function loadBase(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      const k = Math.min(1, 2400 / Math.max(im.naturalWidth, im.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(im.naturalWidth * k);
+      c.height = Math.round(im.naturalHeight * k);
+      const ctx = c.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(im, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c);
+    };
+    im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('decode')); };
+    im.src = url;
+  });
+}
+
+function rotated(base, rot) {
+  if (!rot) return base;
+  const c = document.createElement('canvas');
+  const odd = rot % 2 === 1;
+  c.width = odd ? base.height : base.width;
+  c.height = odd ? base.width : base.height;
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width / 2, c.height / 2);
+  ctx.rotate(rot * Math.PI / 2);
+  ctx.drawImage(base, -base.width / 2, -base.height / 2);
+  return c;
+}
+
+// ── 사진 맞추기 (끌기·벌리기·휠·슬라이더) ──
+const cv = $('cropCanvas');
+const cctx = cv.getContext('2d');
+const crop = { base: null, rot: 0, src: null, s: 1, ox: 0, oy: 0, minS: 1, FW: 0, FH: 0, fx: 0, fy: 0, W: 0, H: 0 };
+const pointers = new Map();
+
+function openCropper(base, rot, prevCrop) {
+  crop.base = base;
+  crop.rot = rot || 0;
+  crop.src = rotated(base, crop.rot);
+  $('cropper').classList.add('on');
+  layoutCropper(prevCrop);
+}
+
+function layoutCropper(keepCrop) {
+  const r = $('stage').getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  crop.W = r.width; crop.H = r.height;
+  cv.width = Math.round(r.width * dpr);
+  cv.height = Math.round(r.height * dpr);
+  cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const ar = frameRatio();
+  const pad = 22;
+  let FW = Math.min(crop.W - pad * 2, (crop.H - pad * 2) * ar);
+  crop.FW = FW; crop.FH = FW / ar;
+  crop.fx = (crop.W - crop.FW) / 2;
+  crop.fy = (crop.H - crop.FH) / 2;
+  const w = crop.src.width, h = crop.src.height;
+  crop.minS = Math.max(crop.FW / w, crop.FH / h);
+  if (keepCrop) {
+    crop.s = crop.FW / keepCrop.sw;
+    crop.ox = -keepCrop.sx * crop.s;
+    crop.oy = -keepCrop.sy * crop.s;
+  } else {
+    crop.s = crop.minS;
+    crop.ox = (crop.FW - w * crop.s) / 2;
+    crop.oy = (crop.FH - h * crop.s) / 2;
+  }
+  clampCrop();
+  drawCrop();
+}
+
+function currentCrop() {
+  return { sx: -crop.ox / crop.s, sy: -crop.oy / crop.s, sw: crop.FW / crop.s, sh: crop.FH / crop.s };
+}
+
+function clampCrop() {
+  const w = crop.src.width, h = crop.src.height;
+  crop.s = Math.min(Math.max(crop.s, crop.minS), crop.minS * 6);
+  crop.ox = Math.min(0, Math.max(crop.FW - w * crop.s, crop.ox));
+  crop.oy = Math.min(0, Math.max(crop.FH - h * crop.s, crop.oy));
+  $('zoomRange').value = Math.round(crop.s / crop.minS * 100);
+}
+
+function zoomAt(newS, px, py) {
+  const k = Math.min(Math.max(newS, crop.minS), crop.minS * 6) / crop.s;
+  crop.ox = px - (px - crop.ox) * k;
+  crop.oy = py - (py - crop.oy) * k;
+  crop.s *= k;
+  clampCrop();
+  drawCrop();
+}
+
+function drawCrop() {
+  const { W, H, fx, fy, FW, FH, s, ox, oy, src } = crop;
+  cctx.fillStyle = '#111';
+  cctx.fillRect(0, 0, W, H);
+  cctx.imageSmoothingQuality = 'high';
+  cctx.drawImage(src, fx + ox, fy + oy, src.width * s, src.height * s);
+  cctx.fillStyle = 'rgba(17,17,17,.68)';
+  cctx.beginPath();
+  cctx.rect(0, 0, W, H);
+  cctx.rect(fx, fy, FW, FH);
+  cctx.fill('evenodd');
+  cctx.strokeStyle = 'rgba(255,255,255,.35)';
+  cctx.lineWidth = 1;
+  cctx.beginPath();
+  for (let i = 1; i < 3; i++) {
+    cctx.moveTo(fx + FW * i / 3, fy); cctx.lineTo(fx + FW * i / 3, fy + FH);
+    cctx.moveTo(fx, fy + FH * i / 3); cctx.lineTo(fx + FW, fy + FH * i / 3);
+  }
+  cctx.stroke();
+  cctx.strokeStyle = '#fff';
+  cctx.lineWidth = 2;
+  cctx.strokeRect(fx, fy, FW, FH);
+}
+
+function pinchInfo() {
+  const [a, b] = [...pointers.values()];
+  return { d: Math.hypot(a.x - b.x, a.y - b.y), mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2 };
+}
+
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+});
+cv.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  if (pointers.size === 1) {
+    const p = pointers.get(e.pointerId);
+    crop.ox += e.offsetX - p.x;
+    crop.oy += e.offsetY - p.y;
+    p.x = e.offsetX; p.y = e.offsetY;
+    clampCrop(); drawCrop();
+  } else if (pointers.size === 2) {
+    const before = pinchInfo();
+    pointers.set(e.pointerId, { x: e.offsetX, y: e.offsetY });
+    const after = pinchInfo();
+    crop.ox += after.mx - before.mx;
+    crop.oy += after.my - before.my;
+    zoomAt(crop.s * (after.d / Math.max(before.d, 1)), after.mx - crop.fx, after.my - crop.fy);
+  }
+});
+['pointerup', 'pointercancel', 'lostpointercapture'].forEach(t => cv.addEventListener(t, e => pointers.delete(e.pointerId)));
+cv.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoomAt(crop.s * Math.exp(-e.deltaY * 0.0015), e.offsetX - crop.fx, e.offsetY - crop.fy);
+}, { passive: false });
+$('zoomRange').addEventListener('input', e => zoomAt(crop.minS * e.target.value / 100, crop.FW / 2, crop.FH / 2));
+addEventListener('resize', () => { if ($('cropper').classList.contains('on')) layoutCropper(currentCrop()); });
+
+$('cropCancel').onclick = () => $('cropper').classList.remove('on');
+$('cropRotate').onclick = () => {
+  crop.rot = (crop.rot + 1) % 4;
+  crop.src = rotated(crop.base, crop.rot);
+  layoutCropper(null);
+};
+$('cropOk').onclick = () => {
+  const c = currentCrop();
+  const out = renderOut(c, 1000);
+  const entry = {
+    base: crop.base, rot: crop.rot, crop: c,
+    img: encodeJpeg(out, 800000),
+    thumb: encodeJpeg(renderOut(c, 240), 60000, 0.72),
+    thumbBig: encodeJpeg(renderOut(c, 480), 200000, 0.8),
+    w: out.width, h: out.height
+  };
+  if (editingIndex >= 0) slots[editingIndex] = entry; else slots.push(entry);
+  $('cropper').classList.remove('on');
+  renderSlots();
+  updateSend();
+};
+
+function renderOut(c, longSide) {
+  const ar = frameRatio();
+  const ow = ar >= 1 ? longSide : Math.round(longSide * ar);
+  const oh = ar >= 1 ? Math.round(longSide / ar) : longSide;
+  const o = document.createElement('canvas');
+  o.width = ow; o.height = oh;
+  const ctx = o.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(crop.src, c.sx, c.sy, c.sw, c.sh, 0, 0, ow, oh);
+  return o;
+}
+
+// Firestore 문서 한 개는 1MB까지라 글자 수가 limit 안에 들 때까지 화질을 낮춘다
+function encodeJpeg(canvas, limit, q) {
+  q = q || 0.92;
+  let url = canvas.toDataURL('image/jpeg', q);
+  while (url.length > limit && q > 0.4) {
+    q -= 0.08;
+    url = canvas.toDataURL('image/jpeg', q);
+  }
+  return url;
+}
+
+// ── 보내기 ──
+function updateSend() {
+  const name = $('nameInput').value.trim();
+  let why = '';
+  if (!config.open) why = '지금은 접수가 마감됐어요.';
+  else if (!slots.length) why = '사진을 먼저 골라 주세요.';
+  else if (!name) why = '이름 또는 별명을 적어 주세요.';
+  else if (!$('agree').checked) why = '아래 동의에 체크해 주세요.';
+  $('sendBtn').disabled = !!why || sending;
+  $('sendBtn').textContent = slots.length > 1 ? `사진 ${slots.length}장 보내기` : '사진 보내기';
+  $('sendWhy').textContent = why;
+  $('sendWhy').classList.remove('err');
+}
+$('nameInput').addEventListener('input', updateSend);
+$('agree').addEventListener('change', updateSend);
+
+$('sendBtn').onclick = async () => {
+  if (sending) return;
+  sending = true; updateSend();
+  loading(true, '보내는 중…');
+  const name = $('nameInput').value.trim().slice(0, 12);
+  try {
+    const items = slots.map(s => ({ img: s.img, thumb: s.thumb, w: s.w, h: s.h }));
+    const r = await store.submit(name, items);
+    const rec = { no: r.no, ids: r.ids, name, at: Date.now(), thumbs: slots.map(s => s.thumb) };
+    saveMine(rec);
+    showDone(rec);
+    slots = [];
+    renderSlots();
+  } catch (e) {
+    console.warn(e);
+    $('sendWhy').textContent = e && e.code === 'permission-denied'
+      ? '지금은 접수가 마감됐거나 사진이 너무 커요. 부스 선생님께 알려 주세요.'
+      : (e && e.message && KR_DEMO ? e.message : '보내지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.');
+    $('sendWhy').classList.add('err');
+    sending = false;
+    $('sendBtn').disabled = false;
+    loading(false);
+    return;
+  }
+  sending = false;
+  loading(false);
+  updateSend();
+};
+
+// ── 내가 보낸 사진 (이 휴대폰에만 기억) ──
+function readMine() { try { return JSON.parse(localStorage.getItem(MINE_KEY) || '[]'); } catch (e) { return []; } }
+function saveMine(rec) {
+  const list = readMine().filter(x => x.no !== rec.no || x.at !== rec.at);
+  list.unshift(rec);
+  try { localStorage.setItem(MINE_KEY, JSON.stringify(list.slice(0, 6))); } catch (e) {
+    try { localStorage.setItem(MINE_KEY, JSON.stringify(list.slice(0, 6).map(x => Object.assign({}, x, { thumbs: [] })))); } catch (e2) {}
+  }
+  watchAllMine();
+}
+
+const statusOf = {};   // 사진 id → 상태 (없어졌으면 null)
+let offMine = null;
+let doneRec = null;
+
+function groupState(ids) {
+  const ss = ids.map(id => statusOf[id]);
+  if (ss.some(s => s === undefined)) return 'loading';
+  if (ss.every(s => s === null)) return 'gone';
+  const live = ss.filter(Boolean);
+  if (live.some(s => s === 'new')) return 'new';
+  if (live.some(s => s === 'printed')) return 'printed';
+  return 'done';
+}
+const STATE_TEXT = { loading: '확인 중', new: '접수됨', printed: '인쇄 완료', done: '전달 완료', gone: '정리됨' };
+const STATE_MSG = {
+  loading: '',
+  new: '접수됐어요! 차례대로 인쇄하고 있어요.<br>번호를 부르면 부스로 와 주세요. 이 화면을 켜 두면 상태가 바뀌어요.',
+  printed: '🎉 인쇄가 끝났어요!<br>부스에서 번호를 말하고 키링을 받아 가세요.',
+  done: '키링을 받으셨어요. 함께해 주셔서 고마워요! 💛',
+  gone: '행사가 끝나 사진이 정리됐어요.'
+};
+
+function watchAllMine() {
+  if (offMine) offMine();
+  const ids = readMine().flatMap(r => r.ids);
+  if (!ids.length) { renderMine(); return; }
+  offMine = store.watchMine(ids, (id, d) => {
+    statusOf[id] = d ? d.status : null;
+    renderMine();
+    if (doneRec) renderDoneState();
+  });
+}
+
+function renderMine() {
+  const list = readMine();
+  $('mineBox').hidden = !list.length;
+  $('mineList').innerHTML = list.map(r => {
+    const st = groupState(r.ids);
+    const t = new Date(r.at);
+    return `<div class="mine-row">
+      <div class="no">${r.no}번</div>
+      <div class="meta">${krEsc(r.name)} · 사진 ${r.ids.length}장<br>${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')} 보냄</div>
+      <span class="chip ${st === 'loading' ? 'gone' : st}">${STATE_TEXT[st]}</span>
+    </div>`;
+  }).join('');
+}
+
+function showDone(rec) {
+  doneRec = rec;
+  $('doneNo').textContent = rec.no;
+  $('doneName').textContent = rec.name + ' 님';
+  $('doneThumbs').innerHTML = (rec.thumbs || []).map(t => `<img src="${t}" alt="">`).join('');
+  renderDoneState();
+  show('viewDone');
+  scrollTo(0, 0);
+}
+
+function renderDoneState() {
+  const st = groupState(doneRec.ids);
+  $('doneState').className = 'state chip ' + (st === 'loading' ? 'new' : st);
+  $('doneState').textContent = STATE_TEXT[st === 'loading' ? 'new' : st];
+  $('doneMsg').innerHTML = STATE_MSG[st === 'loading' ? 'new' : st];
+}
+
+$('againBtn').onclick = () => {
+  doneRec = null;
+  show(config.open ? 'viewForm' : 'viewClosed');
+  updateSend();
+  scrollTo(0, 0);
+};
+
+function loading(on, text) {
+  $('loading').classList.toggle('on', on);
+  if (text) $('loadingText').textContent = text;
+}
+
+watchAllMine();
+</script>
+</body>
+</html>

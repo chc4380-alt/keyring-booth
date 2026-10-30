@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>키링 부스 관리</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style id="pageStyle"></style>
+<style>
+  :root {
+    --bg: #F6F2EB;
+    --card: #FFFFFF;
+    --ink: #22201C;
+    --sub: #6E685F;
+    --line: rgba(34, 32, 28, .12);
+    --accent: #F2603F;
+    --accent-soft: #FDE7DF;
+    --ok: #1E8A5A;
+    --ok-soft: #E1F3EA;
+    --warn: #B7791F;
+    --warn-soft: #FBF0D9;
+    --danger: #C0392B;
+    --danger-soft: #FBE4E1;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; font-size: 15px; line-height: 1.5; word-break: keep-all; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+
+  .bar { position: sticky; top: 0; z-index: 10; background: rgba(246, 242, 235, .94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+  .bar-in { max-width: 1280px; margin: 0 auto; padding: 12px 20px 0; }
+  .bar-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .brand { font-weight: 800; font-size: 18px; }
+  .brand small { font-weight: 600; color: var(--sub); font-size: 14px; margin-left: 6px; }
+  .demo-badge { padding: 2px 9px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font-size: 12px; font-weight: 700; }
+  .counts { display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap; }
+  .count { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px; font-size: 13px; color: var(--sub); }
+  .count b { color: var(--ink); font-size: 16px; margin-left: 4px; }
+  .switch { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 5px 6px 5px 14px; cursor: pointer; user-select: none; font-weight: 700; font-size: 14px; }
+  .switch .track { width: 46px; height: 26px; border-radius: 999px; background: #CFC8BE; position: relative; transition: background .2s; }
+  .switch .track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .switch.on .track { background: var(--ok); }
+  .switch.on .track::after { left: 23px; }
+  .switch .lbl.on { color: var(--ok); }
+  .switch .lbl.off { color: var(--danger); }
+
+  .tabs { display: flex; gap: 4px; margin-top: 10px; }
+  .tab { border: 0; background: transparent; padding: 10px 16px; font-weight: 700; color: var(--sub); border-bottom: 3px solid transparent; cursor: pointer; font-size: 15px; }
+  .tab.on { color: var(--ink); border-bottom-color: var(--accent); }
+  .tab .pill { display: inline-block; min-width: 20px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 12px; line-height: 20px; text-align: center; }
+
+  main { max-width: 1280px; margin: 0 auto; padding: 20px; }
+  .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chipbtn { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 14px; font-weight: 600; cursor: pointer; color: var(--sub); }
+  .chipbtn.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .spacer { flex: 1; }
+  .btn { border: 1px solid var(--line); background: #fff; border-radius: 10px; padding: 8px 14px; font-weight: 700; font-size: 14px; cursor: pointer; white-space: nowrap; }
+  .btn:hover { background: #FAF8F4; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #E2532F; }
+  .btn-ok { background: var(--ok); border-color: var(--ok); color: #fff; }
+  .btn-ok:hover { background: #18734B; }
+  .btn-danger { color: var(--danger); }
+  .btn-big { padding: 13px 20px; font-size: 16px; border-radius: 12px; }
+  .btn-sm { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+
+  /* 접수함 */
+  .groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .grp { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 12px; transition: box-shadow .3s; }
+  .grp.fresh { box-shadow: 0 0 0 3px var(--accent); animation: pop .5s ease; }
+  @keyframes pop { from { transform: scale(.96); } to { transform: none; } }
+  .g-head { display: flex; align-items: center; gap: 10px; }
+  .g-no { font-size: 30px; font-weight: 900; letter-spacing: -.03em; min-width: 48px; line-height: 1; }
+  .g-who { flex: 1; min-width: 0; }
+  .g-who b { display: block; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .g-who small { color: var(--sub); font-size: 13px; }
+  .chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  .chip.new { background: var(--warn-soft); color: var(--warn); }
+  .chip.printed { background: var(--accent-soft); color: var(--accent); }
+  .chip.done { background: var(--ok-soft); color: var(--ok); }
+  .g-thumbs { display: flex; gap: 8px; }
+  .g-thumb { position: relative; flex: 1; max-width: 50%; border-radius: 10px; overflow: hidden; background: #F0EBE3; }
+  .g-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .g-thumb .intray { position: absolute; top: 6px; right: 6px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 7px; }
+  .g-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .g-acts .btn { flex: 1; padding: 7px 8px; font-size: 13.5px; }
+  .g-acts .btn.mini { flex: none; color: var(--sub); }
+  .empty { text-align: center; color: var(--sub); padding: 60px 20px; background: #fff; border: 1px dashed var(--line); border-radius: 16px; }
+  .empty .e { font-size: 40px; }
+
+  /* 인쇄 */
+  .print-grid { display: grid; grid-template-columns: 350px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .print-grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .panel + .panel { margin-top: 14px; }
+  .panel h3 { margin: 0 0 12px; font-size: 15px; }
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .row > label:first-child { width: 76px; color: var(--sub); font-size: 14px; flex: none; }
+  .num { width: 64px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff; }
+  select.sel, .txt, textarea.txt { border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; background: #fff; }
+  .txt { width: 100%; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 8px; cursor: pointer; }
+  .check input { width: 17px; height: 17px; accent-color: var(--accent); }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; margin: -2px 0 10px 84px; }
+  .note { font-size: 13px; color: var(--sub); line-height: 1.6; }
+  .note.warn { color: var(--warn); }
+  .fit { background: #F6F2EB; border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-top: 4px; }
+  .fit b { color: var(--accent); }
+  .tray-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tray-item { position: relative; width: 64px; }
+  .tray-item img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; display: block; }
+  .tray-item span { display: block; font-size: 11.5px; text-align: center; color: var(--sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tray-item button { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--ink); color: #fff; font-size: 12px; cursor: pointer; line-height: 22px; padding: 0; }
+  .tray-item.loading img { opacity: .4; }
+  .sheets { display: flex; flex-wrap: wrap; gap: 18px; }
+  .sheet-wrap { text-align: center; font-size: 13px; color: var(--sub); }
+  .sheet-wrap .sheet { box-shadow: 0 6px 24px rgba(0,0,0,.12); margin-bottom: 6px; }
+  .howto { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--sub); line-height: 1.75; }
+  .howto b { color: var(--ink); }
+
+  /* 인쇄 용지 (화면 미리보기와 실제 인쇄에 같이 씀) */
+  .sheet { position: relative; background: #fff; overflow: hidden; }
+  .sheet .cell { position: absolute; overflow: hidden; background: #EEE; }
+  .sheet .cell img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .sheet.cut .cell { outline: 0.15mm solid #B8B8B8; }
+  .sheet .lab { position: absolute; font-size: 2.3mm; line-height: 1; color: #777; text-align: center; white-space: nowrap; overflow: hidden; }
+
+  /* QR 안내판 */
+  .qr-grid { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .qr-grid { grid-template-columns: 1fr; } }
+  .poster-box { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; justify-content: center; }
+  .poster { width: 100%; max-width: 560px; text-align: center; color: #22201C; background: #fff; }
+  .poster .p-eyebrow { font-weight: 800; color: var(--accent); font-size: 18px; }
+  .poster h1 { font-size: 40px; line-height: 1.25; margin: 6px 0 6px; letter-spacing: -.03em; }
+  .poster .p-sub { font-size: 19px; color: #6E685F; margin: 0 0 22px; }
+  .poster .p-qr { width: 68%; margin: 0 auto; aspect-ratio: 1; }
+  .poster .p-qr svg { width: 100%; height: 100%; display: block; }
+  .poster .p-steps { display: flex; gap: 10px; margin: 24px 0 14px; text-align: left; }
+  .poster .p-step { flex: 1; background: #FBF6EE; border-radius: 14px; padding: 12px 12px; font-size: 15px; line-height: 1.45; }
+  .poster .p-step b { display: block; color: var(--accent); font-size: 22px; line-height: 1.1; margin-bottom: 4px; }
+  .poster .p-url { font-size: 13px; color: #8A847B; word-break: break-all; }
+  .poster-box:fullscreen { align-items: center; border-radius: 0; }
+  .poster-box:fullscreen .poster { max-width: min(92vw, 62vh); }
+
+  .danger-zone { border-color: rgba(192, 57, 43, .35); }
+  .modal-bg { position: fixed; inset: 0; background: rgba(20, 18, 16, .45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .modal { background: #fff; border-radius: 18px; padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  .modal h3 { margin: 0 0 8px; font-size: 18px; }
+  .modal p { margin: 0 0 18px; color: var(--sub); }
+  .modal .acts { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 11px 18px; border-radius: 12px; font-weight: 600; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+
+  #printRoot { display: none; }
+  @media print {
+    html, body { background: #fff !important; }
+    body > *:not(#printRoot) { display: none !important; }
+    #printRoot { display: block; }
+    #printRoot * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #printRoot .sheet { break-after: page; page-break-after: always; }
+    #printRoot .sheet:last-child { break-after: auto; page-break-after: auto; }
+    #printRoot .poster { max-width: none; width: 190mm; margin: 0 auto; }
+    #printRoot .poster .p-qr { width: 120mm; }
+  }
+</style>
+</head>
+<body>
+<header class="bar">
+  <div class="bar-in">
+    <div class="bar-row">
+      <div class="brand">📸 키링 부스 관리<small id="evName"></small></div>
+      <span class="demo-badge" id="demoBadge" hidden>연습 모드 · 서버에 안 올라가요</span>
+      <div class="counts">
+        <div class="count">대기<b id="cNew">0</b></div>
+        <div class="count">인쇄 완료<b id="cPrinted">0</b></div>
+        <div class="count">전달 완료<b id="cDone">0</b></div>
+      </div>
+      <div class="switch" id="openSwitch" title="눌러서 접수 열기/마감">
+        <span class="lbl" id="openLabel">접수 중</span><span class="track"></span>
+      </div>
+    </div>
+    <nav class="tabs">
+      <button class="tab on" data-tab="inbox">접수함<span class="pill" id="tabNewPill" hidden>0</span></button>
+      <button class="tab" data-tab="print">인쇄<span class="pill" id="tabTrayPill" hidden>0</span></button>
+      <button class="tab" data-tab="qr">QR 안내판</button>
+      <button class="tab" data-tab="settings">설정</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- 접수함 -->
+  <section id="tab-inbox">
+    <div class="toolbar">
+      <button class="chipbtn on" data-filter="new">대기</button>
+      <button class="chipbtn" data-filter="printed">인쇄 완료</button>
+      <button class="chipbtn" data-filter="done">전달 완료</button>
+      <button class="chipbtn" data-filter="all">전체</button>
+      <span class="spacer"></span>
+      <label class="check" style="margin:0"><input type="checkbox" id="soundOn" checked> 새 사진 오면 소리</label>
+      <button class="btn btn-primary" id="addAllNew">대기 사진 전부 인쇄 목록에 담기</button>
+    </div>
+    <div id="groups" class="groups"></div>
+  </section>
+
+  <!-- 인쇄 -->
+  <section id="tab-print" hidden>
+    <div class="print-grid">
+      <div>
+        <div class="panel">
+          <h3>용지</h3>
+          <div class="row"><label>용지 크기</label>
+            <select class="sel" id="paperSel">
+              <option value="P">엽서 100×148mm</option>
+              <option value="L">L 89×119mm</option>
+              <option value="C">카드 54×86mm</option>
+              <option value="custom">직접 입력</option>
+            </select></div>
+          <div class="row" id="paperCustom"><label>가로×세로</label>
+            <input class="num" id="paperW" type="number" step="0.5" min="20"> ×
+            <input class="num" id="paperH" type="number" step="0.5" min="20"> mm</div>
+          <div class="row"><label>방향</label>
+            <button class="btn btn-sm" id="paperRotate">↻ 가로·세로 바꾸기</button></div>
+          <div class="row"><label>바깥 여백</label><input class="num" id="margin" type="number" step="0.5" min="0" max="20"> mm</div>
+          <div class="row"><label>사진 사이</label><input class="num" id="gap" type="number" step="0.5" min="0" max="20"> mm</div>
+        </div>
+
+        <div class="panel">
+          <h3>키링 사진 크기</h3>
+          <div class="row"><label>가로×세로</label>
+            <input class="num" id="keyW" type="number" step="0.5" min="10" max="140"> ×
+            <input class="num" id="keyH" type="number" step="0.5" min="10" max="140"> mm</div>
+          <div class="presets" id="keyPresets"></div>
+          <p class="note">키링 틀 안쪽(사진이 들어가는 칸)을 자로 재서 넣어 주세요. 참가자 휴대폰의 맞추기 틀도 이 비율로 바뀌어요.</p>
+          <p class="note warn" id="ratioWarn" hidden>비율을 바꾸면 이미 받은 사진은 가운데를 기준으로 조금 잘려서 들어가요.</p>
+        </div>
+
+        <div class="panel">
+          <h3>찍는 방법</h3>
+          <div class="row"><label>사진마다</label>
+            <select class="sel" id="copies">
+              <option value="1">1장씩</option>
+              <option value="2">2장씩 (양면 키링)</option>
+              <option value="3">3장씩</option>
+            </select></div>
+          <label class="check"><input type="checkbox" id="cutLines"> 자르는 선 넣기 (사진 바깥에 얇은 회색 선)</label>
+          <label class="check"><input type="checkbox" id="labels"> 사진 아래에 번호·이름 작게 넣기</label>
+          <div class="fit" id="fitInfo"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="panel">
+          <div class="toolbar" style="margin-bottom:12px">
+            <h3 style="margin:0">인쇄 목록</h3>
+            <span class="note" id="trayInfo"></span>
+            <span class="spacer"></span>
+            <button class="btn" id="trayClear">목록 비우기</button>
+            <button class="btn btn-primary btn-big" id="printBtn">🖨 인쇄하기</button>
+          </div>
+          <div id="trayList" class="tray-list"></div>
+        </div>
+        <div class="panel">
+          <h3>미리보기 <span class="note" id="sheetCount"></span></h3>
+          <div id="sheets" class="sheets"></div>
+        </div>
+        <div class="panel">
+          <h3>셀피 프린터로 찍을 때</h3>
+          <ol class="howto">
+            <li>인쇄 창에서 프린터를 <b>Canon SELPHY</b>로 고르세요.</li>
+            <li><b>설정 더보기</b> → 용지 크기를 위에서 고른 용지(엽서 100×148mm)로, 여백은 <b>없음</b>, 배율은 <b>기본값(100%)</b>으로 두세요.</li>
+            <li><b>머리글과 바닥글</b>은 끄세요. (켜 두면 날짜·주소가 같이 찍혀요)</li>
+            <li>처음 한 장은 시험으로 찍어 보고 크기를 자로 재 보세요. 테두리 없이 찍으면 가장자리가 1~2mm 잘릴 수 있어서 바깥 여백을 4mm 이상 두는 걸 권해요.</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QR 안내판 -->
+  <section id="tab-qr" hidden>
+    <div class="qr-grid">
+      <div class="poster-box" id="posterBox"><div class="poster" id="poster"></div></div>
+      <div>
+        <div class="panel">
+          <h3>참가자 주소</h3>
+          <input class="txt" id="partUrl" readonly onclick="this.select()">
+          <div class="toolbar" style="margin:12px 0 0">
+            <button class="btn" id="copyUrl">주소 복사</button>
+            <button class="btn" id="openPart">새 창에서 열기</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>안내판 쓰는 법</h3>
+          <div class="toolbar" style="margin:0 0 10px">
+            <button class="btn btn-primary" id="printPoster">A4로 인쇄</button>
+            <button class="btn" id="fullPoster">화면 가득 띄우기</button>
+          </div>
+          <p class="note">A4로 인쇄해 부스 앞에 붙이거나, 태블릿·모니터에 화면 가득 띄워 두세요. 화면 가득 띄운 뒤에는 Esc로 돌아와요.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 설정 -->
+  <section id="tab-settings" hidden>
+    <div style="max-width:640px">
+      <div class="panel">
+        <h3>행사</h3>
+        <div class="row"><label>행사 이름</label><input class="txt" id="setEvent" maxlength="40" style="flex:1"></div>
+        <div class="row"><label>한 사람당</label>
+          <select class="sel" id="setMax">
+            <option value="1">사진 1장</option>
+            <option value="2">사진 2장까지</option>
+            <option value="3">사진 3장까지</option>
+            <option value="4">사진 4장까지</option>
+          </select></div>
+        <div class="row" style="align-items:flex-start"><label style="padding-top:7px">안내 문구</label>
+          <textarea class="txt" id="setNotice" rows="3" maxlength="200" style="flex:1" placeholder="참가자 화면 맨 위에 보여요. 예) 한 사람당 키링 1개, 15분쯤 걸려요."></textarea></div>
+        <div style="text-align:right"><button class="btn btn-primary" id="saveSettings">저장</button></div>
+      </div>
+
+      <div class="panel">
+        <h3>미리 연습하기</h3>
+        <p class="note" style="margin-top:0">연습 모드는 이 PC 브라우저 안에서만 돌아서 실제 접수함에 아무것도 안 들어가요. 참가자 화면과 관리 화면을 같은 브라우저 두 탭으로 열어 보세요.</p>
+        <div class="toolbar" style="margin:0">
+          <a class="btn" id="demoPart" target="_blank">연습용 참가자 화면</a>
+          <a class="btn" id="demoAdmin" target="_blank">연습용 관리 화면</a>
+        </div>
+      </div>
+
+      <div class="panel danger-zone">
+        <h3>행사 끝나고 정리</h3>
+        <p class="note" style="margin-top:0">받은 사진에는 참가자 얼굴이 들어 있어요. 행사가 끝나면 꼭 지워 주세요. 지운 사진은 되살릴 수 없어요.</p>
+        <div class="toolbar" style="margin:0">
+          <button class="btn btn-danger" id="wipeAll">사진 전부 지우기</button>
+          <button class="btn" id="resetNo">접수 번호 1번부터 다시</button>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="printRoot"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js" integrity="sha384-ZaR6mWzmJtrRibZ1Vm7SoHFr8OXjyAuGAXalGDKqbxFT18oi/z+oZLIRFkpeNor1" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js" integrity="sha384-Ke0FJhH7LyRqDxZ0wt+/OXV38yfQVu7g9VPEEGjYmB4RVOY/ta04uecRhsMwT7V3" crossorigin="anonymous"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js" integrity="sha384-I1LYojsZ5RM1cOda44Z2h42Qa6YfsQ1XkXxREnhp4ueYBR/4d1pG1K+NZM537Vsj" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="store.js"></script>
+<script src="staff-auth.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const store = krMakeStore();
+const PAPERS = { P: [100, 148], L: [89, 119], C: [54, 86] };
+const KEY_PRESETS = [[35, 35], [40, 40], [45, 45], [50, 50], [35, 45], [40, 55]];
+const LS = KR_DEMO ? 'kr_demo_admin_' : 'kr_admin_';
+const lsGet = (k, d) => { try { const v = localStorage.getItem(LS + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch (e) {} };
+
+let config = Object.assign({}, KR_DEFAULT_CONFIG);
+let photos = [];                 // keyringPhotos 문서들
+let tray = lsGet('tray', []);    // 인쇄 목록 (사진 id 순서대로)
+let filter = 'new';
+const fullCache = new Map();     // id → 인쇄용 사진
+const fresh = new Map();         // 막 들어온 접수 번호 → 강조 끝나는 시각
+let printSet = Object.assign({ paper: 'P', W: 100, H: 148, margin: 4, gap: 2, copies: 1, cutLines: true, labels: false }, lsGet('print', {}));
+
+if (KR_DEMO) $('demoBadge').hidden = false;
+
+function toast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2400);
+}
+
+function ask(title, body, buttons) {
+  return new Promise(resolve => {
+    const bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.innerHTML = `<div class="modal"><h3>${krEsc(title)}</h3><p>${body}</p><div class="acts"></div></div>`;
+    buttons.forEach(b => {
+      const el = document.createElement('button');
+      el.className = 'btn ' + (b.cls || '');
+      el.textContent = b.text;
+      el.onclick = () => { bg.remove(); resolve(b.value); };
+      bg.querySelector('.acts').appendChild(el);
+    });
+    document.body.appendChild(bg);
+  });
+}
+
+// ── 탭 ──
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => openTab(t.dataset.tab));
+function openTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.tab === name));
+  ['inbox', 'print', 'qr', 'settings'].forEach(n => { $('tab-' + n).hidden = n !== name; });
+  if (name === 'print') renderPrint();
+  if (name === 'qr') renderPoster();
+  if (name === 'settings') fillSettings();
+  lsSet('tab', name);
+}
+
+// ── 시작 (직원 로그인 뒤) ──
+function start() {
+  store.watchConfig((c, exists) => {
+    config = c;
+    // 설정 문서가 없으면 참가자 쪽 규칙(접수 열림 확인)이 막히므로 기본값으로 한 번 만들어 둔다
+    if (!exists) store.saveConfig(Object.assign({}, KR_DEFAULT_CONFIG)).catch(e => console.warn(e));
+    $('evName').textContent = c.eventName ? '· ' + c.eventName : '';
+    $('openSwitch').classList.toggle('on', !!c.open);
+    $('openLabel').textContent = c.open ? '접수 중' : '접수 마감';
+    $('openLabel').className = 'lbl ' + (c.open ? 'on' : 'off');
+    if (!$('tab-print').hidden) renderPrint();
+    if (!$('tab-qr').hidden) renderPoster();
+  }, e => toast('설정을 불러오지 못했어요: ' + (e.code || e.message)));
+
+  let first = true;
+  store.watchPhotos(list => {
+    const before = new Set(photos.map(p => p.id));
+    photos = list;
+    if (!first) {
+      const added = list.filter(p => !before.has(p.id));
+      if (added.length) {
+        added.forEach(p => fresh.set(p.no, Date.now() + 15000));
+        beep();
+        setTimeout(renderInbox, 15100);
+      }
+    }
+    first = false;
+    // 지워진 사진은 인쇄 목록에서도 뺀다
+    const ids = new Set(list.map(p => p.id));
+    const kept = tray.filter(id => ids.has(id));
+    if (kept.length !== tray.length) { tray = kept; lsSet('tray', tray); }
+    renderInbox();
+    if (!$('tab-print').hidden) renderPrint();
+  }, e => toast('접수함을 불러오지 못했어요: ' + (e.code || e.message)));
+
+  openTab(lsGet('tab', 'inbox'));
+  tray.forEach(loadFull);
+}
+
+$('openSwitch').onclick = async () => {
+  const next = !config.open;
+  if (!next && !(await ask('접수를 마감할까요?', '참가자 화면에 "지금은 접수를 받지 않아요"가 떠요. 이미 받은 사진은 그대로 있어요.', [
+    { text: '취소', value: false }, { text: '마감하기', value: true, cls: 'btn-primary' }]))) return;
+  store.saveConfig({ open: next }).catch(e => toast('바꾸지 못했어요: ' + (e.code || e.message)));
+};
+
+// ── 새 사진 알림 소리 ──
+let audioCtx = null;
+$('soundOn').checked = lsGet('sound', true);
+$('soundOn').onchange = e => lsSet('sound', e.target.checked);
+document.addEventListener('pointerdown', () => {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+  else if (audioCtx.state === 'suspended') audioCtx.resume();
+}, { once: false });
+function beep() {
+  if (!$('soundOn').checked || !audioCtx) return;
+  [0, 0.16].forEach((t, i) => {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = i ? 1175 : 880;
+    g.gain.setValueAtTime(0.0001, audioCtx.currentTime + t);
+    g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + t + 0.3);
+    o.connect(g).connect(audioCtx.destination);
+    o.start(audioCtx.currentTime + t);
+    o.stop(audioCtx.currentTime + t + 0.32);
+  });
+}
+
+// ── 접수함 ──
+function groupsOf(list) {
+  const m = new Map();
+  list.forEach(p => {
+    if (!m.has(p.no)) m.set(p.no, { no: p.no, name: p.name, at: p.createdAt, items: [] });
+    const g = m.get(p.no);
+    g.items.push(p);
+    g.at = Math.min(g.at, p.createdAt);
+  });
+  const gs = [...m.values()];
+  gs.forEach(g => {
+    g.items.sort((a, b) => a.idx - b.idx);
+    const ss = g.items.map(p => p.status);
+    g.status = ss.includes('new') ? 'new' : ss.includes('printed') ? 'printed' : 'done';
+  });
+  return gs;
+}
+
+document.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => {
+  filter = b.dataset.filter;
+  document.querySelectorAll('[data-filter]').forEach(x => x.classList.toggle('on', x === b));
+  renderInbox();
+});
+
+function hhmm(ms) {
+  const d = new Date(ms);
+  const h = d.getHours();
+  return `${h < 12 ? '오전' : '오후'} ${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderInbox() {
+  const gs = groupsOf(photos);
+  const n = s => gs.filter(g => g.status === s).length;
+  $('cNew').textContent = n('new');
+  $('cPrinted').textContent = n('printed');
+  $('cDone').textContent = n('done');
+  $('tabNewPill').hidden = !n('new');
+  $('tabNewPill').textContent = n('new');
+  document.title = (n('new') ? `(${n('new')}) ` : '') + '키링 부스 관리';
+  updateTrayPill();
+
+  let show = filter === 'all' ? gs : gs.filter(g => g.status === filter);
+  // 대기는 먼저 온 순서, 나머지는 최근 순서
+  show.sort((a, b) => filter === 'new' ? a.no - b.no : b.no - a.no);
+  const inTray = new Set(tray);
+  const now = Date.now();
+  if (!show.length) {
+    const msg = { new: '기다리는 사진이 없어요.', printed: '인쇄를 마친 사진이 없어요.', done: '아직 전달한 키링이 없어요.', all: '아직 받은 사진이 없어요.' }[filter];
+    $('groups').innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="e">📭</div>${msg}<br><span class="note">참가자가 QR을 찍고 사진을 보내면 여기에 바로 떠요.</span></div>`;
+    return;
+  }
+  const ar = `${config.keyW} / ${config.keyH}`;
+  $('groups').innerHTML = show.map(g => {
+    const allIn = g.items.every(p => inTray.has(p.id));
+    const isFresh = (fresh.get(g.no) || 0) > now;
+    let acts = '';
+    if (g.status === 'new') {
+      acts = allIn
+        ? `<button class="btn" onclick="trayRemoveGroup(${g.no})">담김 ✓ 빼기</button>`
+        : `<button class="btn btn-primary" onclick="trayAddGroup(${g.no})">인쇄 목록에 담기</button>`;
+    } else if (g.status === 'printed') {
+      acts = `<button class="btn btn-ok" onclick="setGroup(${g.no}, 'done')">전달 완료</button>
+        <button class="btn" onclick="trayAddGroup(${g.no})">${allIn ? '담김 ✓' : '다시 인쇄'}</button>`;
+    } else {
+      acts = `<button class="btn" onclick="trayAddGroup(${g.no})">${allIn ? '담김 ✓' : '다시 인쇄'}</button>`;
+    }
+    if (g.status !== 'new') acts += `<button class="btn mini" title="대기로 되돌리기" onclick="setGroup(${g.no}, 'new')">↩</button>`;
+    acts += `<button class="btn mini" title="삭제" onclick="deleteGroup(${g.no})">🗑</button>`;
+    return `<div class="grp${isFresh ? ' fresh' : ''}">
+      <div class="g-head">
+        <div class="g-no">${g.no}</div>
+        <div class="g-who"><b>${krEsc(g.name)}</b><small>${hhmm(g.at)} · 사진 ${g.items.length}장</small></div>
+        <span class="chip ${g.status}">${KR_STATUS[g.status]}</span>
+      </div>
+      <div class="g-thumbs">${g.items.map(p => `<div class="g-thumb" style="aspect-ratio:${ar}">
+        <img src="${krEsc(p.thumb)}" alt="">${inTray.has(p.id) ? '<span class="intray">인쇄 목록</span>' : ''}</div>`).join('')}</div>
+      <div class="g-acts">${acts}</div>
+    </div>`;
+  }).join('');
+}
+
+const groupIds = no => photos.filter(p => p.no === no).sort((a, b) => a.idx - b.idx).map(p => p.id);
+
+function trayAddGroup(no) {
+  const add = groupIds(no).filter(id => !tray.includes(id));
+  if (!add.length) { openTab('print'); return; }
+  tray.push(...add);
+  lsSet('tray', tray);
+  add.forEach(loadFull);
+  renderInbox();
+  toast(`${no}번 사진을 인쇄 목록에 담았어요`);
+}
+function trayRemoveGroup(no) {
+  const ids = new Set(groupIds(no));
+  tray = tray.filter(id => !ids.has(id));
+  lsSet('tray', tray);
+  renderInbox();
+}
+$('addAllNew').onclick = () => {
+  const gs = groupsOf(photos).filter(g => g.status === 'new').sort((a, b) => a.no - b.no);
+  const add = gs.flatMap(g => g.items.map(p => p.id)).filter(id => !tray.includes(id));
+  if (!add.length) { toast('새로 담을 대기 사진이 없어요'); return; }
+  tray.push(...add);
+  lsSet('tray', tray);
+  add.forEach(loadFull);
+  renderInbox();
+  toast(`사진 ${add.length}장을 담았어요`);
+};
+
+async function setGroup(no, status) {
+  try { await store.setStatus(groupIds(no), status); } catch (e) { toast('바꾸지 못했어요: ' + (e.code || e.message)); }
+}
+async function deleteGroup(no) {
+  const g = groupsOf(photos).find(x => x.no === no);
+  if (!g) return;
+  const ok = await ask(`${no}번 ${g.name} 님 사진을 지울까요?`, `사진 ${g.items.length}장이 지워지고 되살릴 수 없어요.`, [
+    { text: '취소', value: false }, { text: '지우기', value: true, cls: 'btn-primary' }]);
+  if (!ok) return;
+  try { await store.remove(g.items.map(p => p.id)); toast('지웠어요'); } catch (e) { toast('지우지 못했어요: ' + (e.code || e.message)); }
+}
+
+function updateTrayPill() {
+  $('tabTrayPill').hidden = !tray.length;
+  $('tabTrayPill').textContent = tray.length;
+}
+
+// ── 인쇄 ──
+function loadFull(id) {
+  if (fullCache.has(id)) return fullCache.get(id);
+  const p = store.getFull(id).then(img => {
+    if (!img) throw new Error('없음');
+    fullCache.set(id, Promise.resolve(img));
+    fullCache.get(id).value = img;
+    if (!$('tab-print').hidden) renderPrint();
+    return img;
+  }).catch(e => {
+    fullCache.delete(id);
+    console.warn('사진을 못 불러옴', id, e);
+    throw e;
+  });
+  fullCache.set(id, p);
+  return p;
+}
+const fullNow = id => (fullCache.get(id) || {}).value;
+
+function bindPrintInputs() {
+  const sync = () => {
+    $('paperSel').value = printSet.paper;
+    $('paperW').value = printSet.W;
+    $('paperH').value = printSet.H;
+    $('margin').value = printSet.margin;
+    $('gap').value = printSet.gap;
+    $('copies').value = printSet.copies;
+    $('cutLines').checked = printSet.cutLines;
+    $('labels').checked = printSet.labels;
+  };
+  sync();
+  const save = () => { lsSet('print', printSet); renderPrint(); };
+  $('paperSel').onchange = e => {
+    printSet.paper = e.target.value;
+    if (PAPERS[printSet.paper]) [printSet.W, printSet.H] = PAPERS[printSet.paper];
+    sync(); save();
+  };
+  const num = (el, key, min) => el.oninput = () => {
+    const v = parseFloat(el.value);
+    if (!isNaN(v) && v >= min) { printSet[key] = v; if (key === 'W' || key === 'H') { printSet.paper = 'custom'; $('paperSel').value = 'custom'; } save(); }
+  };
+  num($('paperW'), 'W', 20); num($('paperH'), 'H', 20);
+  num($('margin'), 'margin', 0); num($('gap'), 'gap', 0);
+  $('paperRotate').onclick = () => { [printSet.W, printSet.H] = [printSet.H, printSet.W]; sync(); save(); };
+  $('copies').onchange = e => { printSet.copies = +e.target.value; save(); };
+  $('cutLines').onchange = e => { printSet.cutLines = e.target.checked; save(); };
+  $('labels').onchange = e => { printSet.labels = e.target.checked; save(); };
+
+  // 키링 크기는 참가자 화면 틀과 같이 써서 서버 설정에 저장
+  let keyTimer = null;
+  const keyInput = () => {
+    const w = parseFloat($('keyW').value), h = parseFloat($('keyH').value);
+    if (!(w >= 10 && h >= 10)) return;
+    $('ratioWarn').hidden = Math.abs(w / h - config.keyW / config.keyH) < 0.01 || !photos.length;
+    clearTimeout(keyTimer);
+    keyTimer = setTimeout(() => store.saveConfig({ keyW: w, keyH: h }).catch(e => toast('저장하지 못했어요: ' + (e.code || e.message))), 500);
+    renderSheets(w, h);
+  };
+  $('keyW').oninput = keyInput;
+  $('keyH').oninput = keyInput;
+  $('keyPresets').innerHTML = KEY_PRESETS.map(([w, h]) => `<button class="btn btn-sm" data-w="${w}" data-h="${h}">${w}×${h}</button>`).join('');
+  $('keyPresets').querySelectorAll('button').forEach(b => b.onclick = () => {
+    $('keyW').value = b.dataset.w; $('keyH').value = b.dataset.h; keyInput();
+  });
+}
+
+function layoutFor(W, H, kw, kh) {
+  const lab = printSet.labels ? 3.4 : 0;
+  const m = printSet.margin, g = printSet.gap;
+  const ch = kh + lab;
+  const cols = Math.max(0, Math.floor((W - 2 * m + g) / (kw + g) + 1e-9));
+  const rows = Math.max(0, Math.floor((H - 2 * m + g) / (ch + g) + 1e-9));
+  const gw = cols * kw + (cols - 1) * g, gh = rows * ch + (rows - 1) * g;
+  return { cols, rows, per: cols * rows, x0: (W - gw) / 2, y0: (H - gh) / 2, kw, kh, ch, lab, W, H };
+}
+
+function sheetHTML(L, cells, useFull) {
+  const byId = new Map(photos.map(p => [p.id, p]));
+  let h = `<div class="sheet${printSet.cutLines ? ' cut' : ''}" style="width:${L.W}mm;height:${L.H}mm">`;
+  cells.forEach((id, i) => {
+    const r = Math.floor(i / L.cols), c = i % L.cols;
+    const x = L.x0 + c * (L.kw + printSet.gap), y = L.y0 + r * (L.ch + printSet.gap);
+    const p = byId.get(id);
+    const src = (useFull && fullNow(id)) || (p ? p.thumb : '');
+    h += `<div class="cell" style="left:${x}mm;top:${y}mm;width:${L.kw}mm;height:${L.kh}mm"><img src="${krEsc(src)}" alt=""></div>`;
+    if (L.lab && p) h += `<div class="lab" style="left:${x}mm;top:${y + L.kh + 0.7}mm;width:${L.kw}mm">${p.no} ${krEsc(p.name)}</div>`;
+  });
+  return h + '</div>';
+}
+
+function printCells() {
+  return tray.flatMap(id => Array(printSet.copies).fill(id));
+}
+
+function renderPrint() {
+  if (!$('paperSel').onchange) bindPrintInputs();
+  if (document.activeElement !== $('keyW') && document.activeElement !== $('keyH')) {
+    $('keyW').value = config.keyW;
+    $('keyH').value = config.keyH;
+  }
+  renderTray();
+  renderSheets(config.keyW, config.keyH);
+}
+
+function renderTray() {
+  const byId = new Map(photos.map(p => [p.id, p]));
+  const loadingN = tray.filter(id => !fullNow(id)).length;
+  $('trayInfo').textContent = tray.length
+    ? `사진 ${tray.length}장${printSet.copies > 1 ? ` × ${printSet.copies}` : ''}${loadingN ? ` · 원본 ${loadingN}장 받는 중…` : ''}`
+    : '';
+  $('trayList').innerHTML = tray.length ? tray.map(id => {
+    const p = byId.get(id);
+    if (!p) return '';
+    return `<div class="tray-item${fullNow(id) ? '' : ' loading'}"><img src="${krEsc(p.thumb)}" alt="">
+      <span>${p.no} ${krEsc(p.name)}</span><button title="빼기" onclick="trayRemove('${id}')">×</button></div>`;
+  }).join('') : '<p class="note" style="margin:0">접수함에서 <b>인쇄 목록에 담기</b>를 누르면 여기에 모여요.</p>';
+  $('printBtn').disabled = !tray.length;
+  $('trayClear').disabled = !tray.length;
+  updateTrayPill();
+}
+
+function trayRemove(id) {
+  tray = tray.filter(x => x !== id);
+  lsSet('tray', tray);
+  renderPrint();
+  renderInbox();
+}
+$('trayClear').onclick = () => { tray = []; lsSet('tray', tray); renderPrint(); renderInbox(); };
+
+function renderSheets(kw, kh) {
+  const L = layoutFor(printSet.W, printSet.H, kw, kh);
+  const alt = layoutFor(printSet.H, printSet.W, kw, kh);
+  let fit = L.per
+    ? `한 장에 <b>${L.per}개</b> (가로 ${L.cols} × 세로 ${L.rows})`
+    : '<span style="color:var(--danger)">사진이 용지보다 커서 한 개도 안 들어가요. 크기나 여백을 줄여 주세요.</span>';
+  if (alt.per > L.per) fit += `<br><span class="note">용지 방향을 바꾸면 ${alt.per}개 들어가요.</span>`;
+  $('fitInfo').innerHTML = fit;
+
+  const cells = printCells();
+  const pages = [];
+  if (L.per) for (let i = 0; i < cells.length; i += L.per) pages.push(cells.slice(i, i + L.per));
+  $('sheetCount').textContent = pages.length ? `· 용지 ${pages.length}장` : '';
+  $('sheets').innerHTML = pages.length
+    ? pages.map((pg, i) => `<div class="sheet-wrap">${sheetHTML(L, pg, true)}${i + 1}장째 · ${pg.length}/${L.per}칸</div>`).join('')
+    : (L.per ? `<div class="sheet-wrap">${sheetHTML(L, [], false)}빈 용지</div>` : '');
+}
+
+$('printBtn').onclick = async () => {
+  const L = layoutFor(printSet.W, printSet.H, config.keyW, config.keyH);
+  if (!L.per || !tray.length) return;
+  $('printBtn').disabled = true;
+  $('printBtn').textContent = '원본 받는 중…';
+  try {
+    await Promise.all(tray.map(loadFull));
+  } catch (e) {
+    $('printBtn').disabled = false;
+    $('printBtn').textContent = '🖨 인쇄하기';
+    toast('원본 사진을 못 받았어요. 인터넷 연결을 확인하고 다시 눌러 주세요.');
+    return;
+  }
+  $('printBtn').textContent = '🖨 인쇄하기';
+  $('printBtn').disabled = false;
+  const cells = printCells();
+  let html = '';
+  for (let i = 0; i < cells.length; i += L.per) html += sheetHTML(L, cells.slice(i, i + L.per), true);
+  const printed = tray.slice();
+  await printNow(html, `@page { size: ${printSet.W}mm ${printSet.H}mm; margin: 0; }`);
+  const nos = [...new Set(printed.map(id => (photos.find(p => p.id === id) || {}).no).filter(Boolean))];
+  const ok = await ask('인쇄가 잘 나왔나요?', `${nos.join(', ')}번 사진을 <b>인쇄 완료</b>로 바꾸고 인쇄 목록을 비울게요. 참가자 휴대폰에도 "인쇄 완료"가 떠요.`, [
+    { text: '아직 아니에요', value: false }, { text: '인쇄 완료로 바꾸기', value: true, cls: 'btn-ok' }]);
+  if (!ok) return;
+  try {
+    const waiting = printed.filter(id => (photos.find(p => p.id === id) || {}).status === 'new');
+    if (waiting.length) await store.setStatus([...new Set(waiting)], 'printed');
+    tray = tray.filter(id => !printed.includes(id));
+    lsSet('tray', tray);
+    renderPrint();
+    renderInbox();
+    toast('인쇄 완료로 바꿨어요');
+  } catch (e) { toast('바꾸지 못했어요: ' + (e.code || e.message)); }
+};
+
+// 사진이 다 그려진 다음 인쇄 창을 연다. 인쇄 창이 닫히면 돌아온다.
+async function printNow(html, pageCss) {
+  $('printRoot').innerHTML = html;
+  $('pageStyle').textContent = pageCss;
+  await Promise.all([...$('printRoot').querySelectorAll('img')].map(im => im.complete ? null : new Promise(r => {
+    im.onload = im.onerror = r;
+    setTimeout(r, 3000);
+  })));
+  window.print();
+  $('printRoot').innerHTML = '';
+  $('pageStyle').textContent = '';
+}
+
+// ── QR 안내판 ──
+function participantUrl() {
+  const u = new URL('./', location.href);
+  if (KR_DEMO) u.search = '?demo';
+  return u.href;
+}
+
+function qrSvg(text) {
+  if (typeof qrcode !== 'function') return '<div class="note">QR을 만들지 못했어요 (인터넷 연결 확인)</div>';
+  const qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  const n = qr.getModuleCount(), q = 2;
+  let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (qr.isDark(r, c)) d += `M${c + q} ${r + q}h1v1h-1z`;
+  return `<svg viewBox="0 0 ${n + q * 2} ${n + q * 2}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#22201C"/></svg>`;
+}
+
+function posterHTML() {
+  const url = participantUrl();
+  return `<div class="poster">
+    <div class="p-eyebrow">📸 기록동아리 체험부스</div>
+    <h1>${krEsc(config.eventName || '사진 키링 만들기')}</h1>
+    <p class="p-sub">휴대폰 사진으로 나만의 키링을 만들어 드려요</p>
+    <div class="p-qr">${qrSvg(url)}</div>
+    <div class="p-steps">
+      <div class="p-step"><b>1</b>카메라로<br>QR 찍기</div>
+      <div class="p-step"><b>2</b>사진 고르고<br>틀에 맞추기</div>
+      <div class="p-step"><b>3</b>번호 받고<br>기다리기</div>
+    </div>
+    <div class="p-url">${krEsc(url)}</div>
+  </div>`;
+}
+
+function renderPoster() {
+  $('posterBox').innerHTML = posterHTML();
+  $('partUrl').value = participantUrl();
+}
+$('copyUrl').onclick = () => {
+  navigator.clipboard.writeText(participantUrl()).then(() => toast('주소를 복사했어요'), () => { $('partUrl').select(); toast('Ctrl+C로 복사해 주세요'); });
+};
+$('openPart').onclick = () => window.open(participantUrl(), '_blank');
+$('printPoster').onclick = () => printNow(posterHTML(), '@page { size: A4; margin: 12mm; }');
+$('fullPoster').onclick = () => {
+  const el = $('posterBox');
+  if (el.requestFullscreen) el.requestFullscreen().catch(() => toast('화면 가득 띄우지 못했어요'));
+};
+
+// ── 설정 ──
+function fillSettings() {
+  $('setEvent').value = config.eventName || '';
+  $('setMax').value = String(config.maxPerPerson || 1);
+  $('setNotice').value = config.notice || '';
+  $('demoPart').href = new URL('./?demo', location.href).href;
+  $('demoAdmin').href = new URL('admin.html?demo', location.href).href;
+}
+$('saveSettings').onclick = async () => {
+  try {
+    await store.saveConfig({
+      eventName: $('setEvent').value.trim() || KR_DEFAULT_CONFIG.eventName,
+      maxPerPerson: +$('setMax').value,
+      notice: $('setNotice').value.trim()
+    });
+    toast('저장했어요');
+  } catch (e) { toast('저장하지 못했어요: ' + (e.code || e.message)); }
+};
+$('wipeAll').onclick = async () => {
+  const n = photos.length;
+  if (!n) { toast('지울 사진이 없어요'); return; }
+  const ok = await ask('사진을 전부 지울까요?', `받은 사진 ${n}장이 모두 지워지고 되살릴 수 없어요. 참가자 휴대폰에는 "정리됨"으로 떠요.`, [
+    { text: '취소', value: false }, { text: `${n}장 전부 지우기`, value: true, cls: 'btn-primary' }]);
+  if (!ok) return;
+  try {
+    await store.removeAll();
+    tray = []; lsSet('tray', tray); fullCache.clear();
+    toast('전부 지웠어요');
+  } catch (e) { toast('지우지 못했어요: ' + (e.code || e.message)); }
+};
+$('resetNo').onclick = async () => {
+  const ok = await ask('접수 번호를 1번부터 다시 시작할까요?', '다음에 보내는 사람이 1번이 돼요. 남아 있는 사진과 번호가 겹칠 수 있으니 사진을 지운 뒤에 쓰세요.', [
+    { text: '취소', value: false }, { text: '1번부터 다시', value: true, cls: 'btn-primary' }]);
+  if (!ok) return;
+  try { await store.resetCounter(); toast('다음 접수는 1번이에요'); } catch (e) { toast('바꾸지 못했어요: ' + (e.code || e.message)); }
+};
+
+if (KR_DEMO) start();
+else requireStaff(start);
+</script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+// ════════════════════════════════════════════════════════════════
+//  키링 부스 규칙 — Firebase 콘솔(youthgroup-7f5d3) → Firestore → 규칙
+//  기존 규칙의  match /databases/{database}/documents {  ...  }  안쪽,
+//  맨 마지막 } 바로 위에 아래 내용을 그대로 붙여 넣고 [게시]를 누르세요.
+//  (isStaff() 는 기존 규칙에 이미 있는 함수를 그대로 씁니다)
+// ════════════════════════════════════════════════════════════════
+
+    // ── 키링 부스 (keyring-booth) ──
+    function krConfig() {
+      return get(/databases/$(database)/documents/keyring/config).data;
+    }
+    function krOpen() {
+      return krConfig().open == true;
+    }
+    match /keyring/config {
+      allow read: if true;
+      allow write: if isStaff();
+    }
+    match /keyring/counter {
+      allow read: if true;
+      allow write: if isStaff();
+      allow create: if krOpen()
+        && request.resource.data.keys().hasOnly(['n'])
+        && request.resource.data.n == 1;
+      allow update: if krOpen()
+        && request.resource.data.keys().hasOnly(['n'])
+        && request.resource.data.n == resource.data.n + 1;
+    }
+    match /keyringPhotos/{id} {
+      allow get: if true;
+      allow list, update, delete: if isStaff();
+      allow create: if krOpen()
+        && request.resource.data.keys().hasOnly(['no', 'name', 'idx', 'total', 'thumb', 'w', 'h', 'status', 'createdAt'])
+        && request.resource.data.no == getAfter(/databases/$(database)/documents/keyring/counter).data.n
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 20
+        && request.resource.data.total is int
+        && request.resource.data.total >= 1 && request.resource.data.total <= krConfig().maxPerPerson
+        && request.resource.data.idx is int
+        && request.resource.data.idx >= 1 && request.resource.data.idx <= request.resource.data.total
+        && request.resource.data.thumb is string && request.resource.data.thumb.size() < 80000
+        && request.resource.data.w is int && request.resource.data.h is int
+        && request.resource.data.status == 'new'
+        && request.resource.data.createdAt == request.time;
+    }
+    match /keyringFull/{id} {
+      allow read, update, delete: if isStaff();
+      allow create: if krOpen()
+        && existsAfter(/databases/$(database)/documents/keyringPhotos/$(id))
+        && request.resource.data.keys().hasOnly(['img'])
+        && request.resource.data.img is string
+        && request.resource.data.img.size() < 1000000;
+    }
