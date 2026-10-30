@@ -244,7 +244,7 @@
         <div class="row"><label>행사 이름</label><input class="txt" id="setEvent" maxlength="40" style="flex:1"></div>
         <div class="row" style="align-items:flex-start"><label style="padding-top:7px">안내 문구</label>
           <textarea class="txt" id="setNotice" rows="3" maxlength="200" style="flex:1" placeholder="참가자 화면 맨 위에 보여요. 예) 15분쯤 걸려요. 번호를 부르면 와 주세요."></textarea></div>
-        <p class="note" style="margin-top:0">사진은 한 번 신청에 1장씩, 셀피 카드 용지(KC-36IP) 한 장 크기인 세로 54×86mm 비율로 받아요. 저장한 사진을 셀피 앱에서 카드 용지로 인쇄하면 돼요.</p>
+        <p class="note" style="margin-top:0">사진은 한 번 신청에 1장씩, 셀피 카드 용지(KC-36IP) 한 장 크기인 54×86mm 비율로 받아요. 세로·가로는 참가자가 골라요(접수함에 표시). 저장한 사진을 셀피 앱에서 카드 용지로 인쇄하면 돼요.</p>
         <div style="text-align:right"><button class="btn btn-primary" id="saveSettings">저장</button></div>
       </div>
 
@@ -459,7 +459,8 @@ function renderInbox() {
     $('groups').innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="e">📭</div>${msg}<br><span class="note">참가자가 QR을 찍고 사진을 보내면 여기에 바로 떠요.</span></div>`;
     return;
   }
-  const ar = `${KR_PHOTO.w} / ${KR_PHOTO.h}`;
+  const isLand = p => p.w > p.h;
+  const thumbStyle = p => (p.w && p.h ? `aspect-ratio:${p.w} / ${p.h}` : `aspect-ratio:${KR_PHOTO.w} / ${KR_PHOTO.h}`) + (isLand(p) ? ';width:128px' : '');
   $('groups').innerHTML = show.map(g => {
     const isFresh = (fresh.get(g.no) || 0) > now;
     let acts = '';
@@ -475,12 +476,12 @@ function renderInbox() {
     acts += `<button class="btn mini" title="지우기" onclick="deleteGroup(${g.no})">🗑</button>`;
     return `<div class="grp${isFresh ? ' fresh' : ''}">
       <div class="g-top">
-        <div class="g-thumbs">${g.items.map(p => `<button class="g-thumb" style="aspect-ratio:${ar}" title="크게 보기" onclick="openView(${g.no})">
+        <div class="g-thumbs">${g.items.map(p => `<button class="g-thumb" style="${thumbStyle(p)}" title="크게 보기" onclick="openView(${g.no})">
           <img src="${krEsc(p.thumb)}" alt=""></button>`).join('')}</div>
         <div class="g-info">
           <div class="g-no">${g.no}번</div>
           <b>${krEsc(g.name)}</b>
-          <small>${hhmm(g.at)}${g.items.length > 1 ? ` · 사진 ${g.items.length}장` : ''}</small>
+          <small>${hhmm(g.at)} · ${g.items.some(isLand) ? '가로' : '세로'}${g.items.length > 1 ? ` · 사진 ${g.items.length}장` : ''}</small>
           <span class="chip ${g.status}">${KR_STATUS[g.status]}</span>
         </div>
       </div>

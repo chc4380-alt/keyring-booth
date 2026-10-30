@@ -101,6 +101,11 @@
   #cropper .head b { color: #fff; }
   #stage { flex: 1; position: relative; min-height: 0; }
   #stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+  #cropper .orient { display: flex; justify-content: center; gap: 0; padding: 6px 16px 0; }
+  #cropper .orient button { border: 1px solid rgba(255,255,255,.3); background: transparent; color: rgba(255,255,255,.8); padding: 8px 20px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  #cropper .orient button:first-child { border-radius: 999px 0 0 999px; }
+  #cropper .orient button:last-child { border-radius: 0 999px 999px 0; border-left: 0; }
+  #cropper .orient button.on { background: #fff; color: #111; border-color: #fff; }
   #cropper .zoom { display: flex; align-items: center; gap: 12px; padding: 8px 22px; }
   #cropper .zoom input { flex: 1; accent-color: var(--accent); }
   #cropper .zoom span { font-size: 18px; opacity: .8; }
@@ -186,7 +191,8 @@
 </div>
 
 <div id="cropper">
-  <div class="head">손가락으로 움직이고 벌려서 <b>카드 크기 틀에 맞춰</b> 주세요</div>
+  <div class="head">세로·가로를 고르고, 손가락으로 움직이고 벌려서 <b>카드 크기 틀에 맞춰</b> 주세요</div>
+  <div class="orient"><button id="orientP">▯ 세로</button><button id="orientL">▭ 가로</button></div>
   <div id="stage"><canvas id="cropCanvas"></canvas></div>
   <div class="zoom"><span>－</span><input type="range" id="zoomRange" min="100" max="600" value="100"><span>＋</span></div>
   <div class="acts">
@@ -239,13 +245,14 @@ store.watchConfig(c => {
 });
 
 // ── 사진 칸 (한 번 신청에 1장) ──
-function frameRatio() { return KR_PHOTO.w / KR_PHOTO.h; }
+// 카드는 세로(54×86) 또는 가로(86×54) 중에 참가자가 고른다
+function frameRatio() { return crop.land ? KR_PHOTO.h / KR_PHOTO.w : KR_PHOTO.w / KR_PHOTO.h; }
 
 function renderSlots() {
-  $('slotHint').textContent = `키링에 넣을 사진 1장을 골라 주세요. 카드 크기(가로 ${KR_PHOTO.w}mm × 세로 ${KR_PHOTO.h}mm)로 맞춰요.`;
+  $('slotHint').textContent = `키링에 넣을 사진 1장을 골라 주세요. 카드 크기(${KR_PHOTO.w}mm × ${KR_PHOTO.h}mm)로 맞추고, 세로·가로 중에 고를 수 있어요.`;
   const ar = `${KR_PHOTO.w} / ${KR_PHOTO.h}`;
   let h = slots.map((s, i) => `
-    <div class="slot" style="aspect-ratio:${ar}">
+    <div class="slot" style="aspect-ratio:${s.w} / ${s.h}">
       <img src="${s.thumbBig}" alt="">
       <div class="tools"><button onclick="editSlot(${i})">고치기</button><button onclick="removeSlot(${i})">빼기</button></div>
     </div>`).join('');
@@ -257,7 +264,7 @@ function renderSlots() {
 }
 
 function pickPhoto() { editingIndex = -1; $('fileInput').value = ''; $('fileInput').click(); }
-function editSlot(i) { editingIndex = i; openCropper(slots[i].base, slots[i].rot, slots[i].crop); }
+function editSlot(i) { editingIndex = i; openCropper(slots[i].base, slots[i].rot, slots[i].crop, slots[i].land); }
 function removeSlot(i) { slots.splice(i, 1); renderSlots(); updateSend(); }
 
 $('fileInput').addEventListener('change', async e => {
@@ -311,16 +318,26 @@ function rotated(base, rot) {
 // ── 사진 맞추기 (끌기·벌리기·휠·슬라이더) ──
 const cv = $('cropCanvas');
 const cctx = cv.getContext('2d');
-const crop = { base: null, rot: 0, src: null, s: 1, ox: 0, oy: 0, minS: 1, FW: 0, FH: 0, fx: 0, fy: 0, W: 0, H: 0 };
+const crop = { base: null, rot: 0, land: false, src: null, s: 1, ox: 0, oy: 0, minS: 1, FW: 0, FH: 0, fx: 0, fy: 0, W: 0, H: 0 };
 const pointers = new Map();
 
-function openCropper(base, rot, prevCrop) {
+// land를 안 주면(새 사진) 사진 모양을 보고 처음 틀을 정한다
+function openCropper(base, rot, prevCrop, land) {
   crop.base = base;
   crop.rot = rot || 0;
   crop.src = rotated(base, crop.rot);
+  setOrient(land == null ? crop.src.width > crop.src.height : land);
   $('cropper').classList.add('on');
   layoutCropper(prevCrop);
 }
+
+function setOrient(land) {
+  crop.land = !!land;
+  $('orientP').classList.toggle('on', !crop.land);
+  $('orientL').classList.toggle('on', crop.land);
+}
+$('orientP').onclick = () => { if (crop.land) { setOrient(false); layoutCropper(null); } };
+$('orientL').onclick = () => { if (!crop.land) { setOrient(true); layoutCropper(null); } };
 
 function layoutCropper(keepCrop) {
   const r = $('stage').getBoundingClientRect();
@@ -439,7 +456,7 @@ $('cropOk').onclick = () => {
   const c = currentCrop();
   const out = renderOut(c, KR_PHOTO.px);
   const entry = {
-    base: crop.base, rot: crop.rot, crop: c,
+    base: crop.base, rot: crop.rot, land: crop.land, crop: c,
     img: encodeJpeg(out, 800000),
     thumb: encodeJpeg(renderOut(c, 240), 60000, 0.72),
     thumbBig: encodeJpeg(renderOut(c, 480), 200000, 0.8),
