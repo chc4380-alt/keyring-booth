@@ -1,8 +1,12 @@
 // ════════════════════════════════════════════════════════════════
 //  키링 부스 규칙 — Firebase 콘솔(youthgroup-7f5d3) → Firestore → 규칙
-//  기존 규칙의  match /databases/{database}/documents {  ...  }  안쪽,
-//  맨 마지막 } 바로 위에 아래 내용을 그대로 붙여 넣고 [게시]를 누르세요.
+//  지난번에 붙여 넣은  // ── 키링 부스 (keyring-booth) ──  부터
+//  match /keyringFull/{id} { ... } 의 닫는 } 까지를 지우고,
+//  그 자리에 아래 내용을 그대로 붙여 넣은 뒤 [게시]를 누르세요.
 //  (isStaff() 는 기존 규칙에 이미 있는 함수를 그대로 씁니다)
+//
+//  먼저 할 일: Authentication → 로그인 방법 → [새 제공업체 추가] → 익명 → 사용 설정
+//  (동아리 친구들이 계정 없이 동아리 코드로 들어오는 데 씁니다)
 // ════════════════════════════════════════════════════════════════
 
     // ── 키링 부스 (keyring-booth) ──
@@ -12,13 +16,25 @@
     function krOpen() {
       return krConfig().open == true;
     }
+    // 동아리 코드로 들어온 기기: 적어 둔 코드가 지금 코드와 같아야 한다 (코드를 바꾸면 모두 다시 넣음)
+    function krMember() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/keyringMembers/$(request.auth.uid)).data.code
+           == get(/databases/$(database)/documents/keyring/secret).data.code;
+    }
+    function krCrew() {
+      return isStaff() || krMember();
+    }
     match /keyring/config {
       allow read: if true;
-      allow write: if isStaff();
+      allow write: if krCrew();
+    }
+    match /keyring/secret {
+      allow read, write: if isStaff();
     }
     match /keyring/counter {
       allow read: if true;
-      allow write: if isStaff();
+      allow write: if krCrew();
       allow create: if krOpen()
         && request.resource.data.keys().hasOnly(['n'])
         && request.resource.data.n == 1;
@@ -26,25 +42,32 @@
         && request.resource.data.keys().hasOnly(['n'])
         && request.resource.data.n == resource.data.n + 1;
     }
+    match /keyringMembers/{uid} {
+      allow get, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['code', 'at'])
+        && request.resource.data.code is string
+        && request.resource.data.code == get(/databases/$(database)/documents/keyring/secret).data.code
+        && request.resource.data.at == request.time;
+      allow list: if isStaff();
+    }
     match /keyringPhotos/{id} {
       allow get: if true;
-      allow list, update, delete: if isStaff();
+      allow list, update, delete: if krCrew();
       allow create: if krOpen()
         && request.resource.data.keys().hasOnly(['no', 'name', 'idx', 'total', 'thumb', 'w', 'h', 'status', 'createdAt'])
         && request.resource.data.no == getAfter(/databases/$(database)/documents/keyring/counter).data.n
         && request.resource.data.name is string
         && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 20
-        && request.resource.data.total is int
-        && request.resource.data.total >= 1 && request.resource.data.total <= krConfig().maxPerPerson
-        && request.resource.data.idx is int
-        && request.resource.data.idx >= 1 && request.resource.data.idx <= request.resource.data.total
+        && request.resource.data.total == 1
+        && request.resource.data.idx == 1
         && request.resource.data.thumb is string && request.resource.data.thumb.size() < 80000
         && request.resource.data.w is int && request.resource.data.h is int
         && request.resource.data.status == 'new'
         && request.resource.data.createdAt == request.time;
     }
     match /keyringFull/{id} {
-      allow read, update, delete: if isStaff();
+      allow read, update, delete: if krCrew();
       allow create: if krOpen()
         && existsAfter(/databases/$(database)/documents/keyringPhotos/$(id))
         && request.resource.data.keys().hasOnly(['img'])

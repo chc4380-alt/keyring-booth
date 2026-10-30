@@ -3,10 +3,13 @@
 //  - 보통: Firestore(youthgroup-7f5d3)의 keyring/*, keyringPhotos, keyringFull
 //  - 주소 끝에 ?demo 를 붙이면 이 브라우저 안에서만 도는 연습 모드(서버에 아무것도 안 올라감)
 //
-//  keyring/config      행사 이름·접수 열림·한 사람당 장수·키링 사진 크기 (누구나 읽기, 직원 쓰기)
+//  keyring/config      행사 이름·접수 열림·키링 사진 크기 (누구나 읽기, 동아리·직원 쓰기)
 //  keyring/counter     접수 번호 {n} (누구나 1씩만 올림)
-//  keyringPhotos/{id}  번호·이름·작은 미리보기·상태 (직원만 목록, 참가자는 자기 문서만)
-//  keyringFull/{id}    인쇄용 사진 (직원만 읽기)
+//  keyring/secret      동아리 코드 {code} (직원만)
+//  keyringMembers/{uid} 동아리 코드로 들어온 기기 {code, at}
+//  keyringPhotos/{id}  번호·이름·작은 미리보기·상태 (동아리·직원만 목록, 참가자는 자기 문서만)
+//  keyringFull/{id}    저장용 원본 사진 (동아리·직원만 읽기)
+//  한 번 신청에 사진 1장만 받는다.
 // ══════════════════════════════════════════════════════════════
 const KR_FIREBASE = {
   apiKey: "AIzaSyBkQ2_Hdv5Tzwr9OpZlb8tAYwWxigvyYKM",
@@ -20,16 +23,17 @@ const KR_DEMO = new URLSearchParams(location.search).has('demo');
 const KR_DEFAULT_CONFIG = {
   eventName: '기록동아리 사진 키링 부스',
   open: true,
-  maxPerPerson: 2,
   keyW: 40,
   keyH: 40,
   notice: ''
 };
 const KR_STATUS = {
-  new: '접수됨',
-  printed: '인쇄 완료',
+  new: '대기',
+  saved: '저장함',
   done: '전달 완료'
 };
+// 예전 버전에서 쓰던 'printed'는 '저장함'으로 본다
+const krStatusOf = s => (s === 'printed' ? 'saved' : s);
 
 function krMakeStore() {
   return KR_DEMO ? krLocalStore() : krFirebaseStore();
@@ -112,6 +116,13 @@ function krFirebaseStore() {
     },
     resetCounter() {
       return cntRef.set({ n: 0 });
+    },
+    async getSecret() {
+      const s = await db.doc('keyring/secret').get();
+      return s.exists ? s.data().code : '';
+    },
+    setSecret(code) {
+      return db.doc('keyring/secret').set({ code });
     }
   };
 }
@@ -187,6 +198,12 @@ function krLocalStore() {
     async resetCounter() {
       write('counter', 0);
       emit();
+    },
+    async getSecret() {
+      return read('secret', '');
+    },
+    async setSecret(code) {
+      write('secret', code);
     }
   };
 }

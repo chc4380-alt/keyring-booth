@@ -45,7 +45,7 @@
   .step { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; align-items: center; justify-content: center; flex: none; }
   .card .hint { color: var(--sub); font-size: 14px; margin: 0 0 14px; }
 
-  .slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .slots { display: grid; grid-template-columns: minmax(0, 260px); justify-content: center; gap: 12px; }
   .slot { position: relative; border-radius: 12px; overflow: hidden; background: #F3EEE6; }
   .slot img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .slot .tools { position: absolute; left: 0; right: 0; bottom: 0; display: flex; }
@@ -76,7 +76,7 @@
   .mine-row .meta { flex: 1; font-size: 14px; color: var(--sub); }
   .chip { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; white-space: nowrap; }
   .chip.new { background: var(--warn-soft); color: var(--warn); }
-  .chip.printed { background: var(--accent-soft); color: var(--accent); }
+  .chip.saved { background: var(--accent-soft); color: var(--accent); }
   .chip.done { background: var(--ok-soft); color: var(--ok); }
   .chip.gone { background: #EEE; color: #888; }
 
@@ -157,7 +157,7 @@
     </section>
 
     <label class="agree"><input type="checkbox" id="agree">
-      <span>보낸 사진은 키링 인쇄에만 쓰고, 행사가 끝나면 바로 지워요. 이 내용에 동의해요.</span></label>
+      <span>보낸 사진은 키링 만들기에만 쓰고, 행사가 끝나면 바로 지워요. 이 내용에 동의해요.</span></label>
   </div>
 
   <div id="mineWrap" hidden>
@@ -174,7 +174,7 @@
     <div class="state chip new" id="doneState">접수됨</div>
     <p class="msg" id="doneMsg"></p>
     <div class="thumbs" id="doneThumbs"></div>
-    <button class="btn btn-ghost" id="againBtn">사진 더 보내기</button>
+    <button class="btn btn-ghost" id="againBtn">사진 한 장 더 보내기</button>
   </div>
 </div>
 
@@ -224,7 +224,6 @@ store.watchConfig(c => {
   document.title = c.eventName || '사진 키링 만들기';
   $('notice').hidden = !c.notice;
   $('notice').textContent = c.notice || '';
-  if (slots.length > c.maxPerPerson) slots = slots.slice(0, c.maxPerPerson);
   renderSlots();
   updateSend();
   const doneShown = !$('viewDone').hidden;
@@ -239,24 +238,20 @@ store.watchConfig(c => {
   show('viewError');
 });
 
-// ── 사진 칸 ──
+// ── 사진 칸 (한 번 신청에 1장) ──
 function frameRatio() { return (config.keyW || 40) / (config.keyH || 40); }
 
 function renderSlots() {
-  const max = config.maxPerPerson || 1;
-  $('slotHint').textContent = max > 1
-    ? `키링에 넣을 사진을 ${max}장까지 골라 주세요. (가로 ${config.keyW}mm × 세로 ${config.keyH}mm)`
-    : `키링에 넣을 사진 1장을 골라 주세요. (가로 ${config.keyW}mm × 세로 ${config.keyH}mm)`;
+  $('slotHint').textContent = `키링에 넣을 사진 1장을 골라 주세요. (가로 ${config.keyW}mm × 세로 ${config.keyH}mm)`;
   const ar = `${config.keyW || 40} / ${config.keyH || 40}`;
   let h = slots.map((s, i) => `
     <div class="slot" style="aspect-ratio:${ar}">
       <img src="${s.thumbBig}" alt="">
-      ${max > 1 ? `<span class="num">${i + 1}</span>` : ''}
       <div class="tools"><button onclick="editSlot(${i})">고치기</button><button onclick="removeSlot(${i})">빼기</button></div>
     </div>`).join('');
-  if (slots.length < max) {
+  if (!slots.length) {
     h += `<button class="add-tile" style="aspect-ratio:${ar}" onclick="pickPhoto()">
-      <span class="plus">＋</span>사진 추가${max > 1 ? ` (${slots.length}/${max})` : ''}</button>`;
+      <span class="plus">＋</span>사진 고르기</button>`;
   }
   $('slots').innerHTML = h;
 }
@@ -488,7 +483,6 @@ function updateSend() {
   else if (!name) why = '이름 또는 별명을 적어 주세요.';
   else if (!$('agree').checked) why = '아래 동의에 체크해 주세요.';
   $('sendBtn').disabled = !!why || sending;
-  $('sendBtn').textContent = slots.length > 1 ? `사진 ${slots.length}장 보내기` : '사진 보내기';
   $('sendWhy').textContent = why;
   $('sendWhy').classList.remove('err');
 }
@@ -501,7 +495,7 @@ $('sendBtn').onclick = async () => {
   loading(true, '보내는 중…');
   const name = $('nameInput').value.trim().slice(0, 12);
   try {
-    const items = slots.map(s => ({ img: s.img, thumb: s.thumb, w: s.w, h: s.h }));
+    const items = slots.slice(0, 1).map(s => ({ img: s.img, thumb: s.thumb, w: s.w, h: s.h }));
     const r = await store.submit(name, items);
     const rec = { no: r.no, ids: r.ids, name, at: Date.now(), thumbs: slots.map(s => s.thumb) };
     saveMine(rec);
@@ -543,16 +537,16 @@ function groupState(ids) {
   const ss = ids.map(id => statusOf[id]);
   if (ss.some(s => s === undefined)) return 'loading';
   if (ss.every(s => s === null)) return 'gone';
-  const live = ss.filter(Boolean);
+  const live = ss.filter(Boolean).map(krStatusOf);
   if (live.some(s => s === 'new')) return 'new';
-  if (live.some(s => s === 'printed')) return 'printed';
+  if (live.some(s => s === 'saved')) return 'saved';
   return 'done';
 }
-const STATE_TEXT = { loading: '확인 중', new: '접수됨', printed: '인쇄 완료', done: '전달 완료', gone: '정리됨' };
+const STATE_TEXT = { loading: '확인 중', new: '접수됨', saved: '만드는 중', done: '전달 완료', gone: '정리됨' };
 const STATE_MSG = {
   loading: '',
-  new: '접수됐어요! 차례대로 인쇄하고 있어요.<br>번호를 부르면 부스로 와 주세요. 이 화면을 켜 두면 상태가 바뀌어요.',
-  printed: '🎉 인쇄가 끝났어요!<br>부스에서 번호를 말하고 키링을 받아 가세요.',
+  new: '접수됐어요! 차례대로 키링을 만들어 드려요.<br>번호를 부르면 부스로 와 주세요. 이 화면을 켜 두면 상태가 바뀌어요.',
+  saved: '🛠 동아리 친구들이 키링을 만들고 있어요!<br>번호를 부르면 부스에서 받아 가세요.',
   done: '키링을 받으셨어요. 함께해 주셔서 고마워요! 💛',
   gone: '행사가 끝나 사진이 정리됐어요.'
 };
@@ -576,7 +570,7 @@ function renderMine() {
     const t = new Date(r.at);
     return `<div class="mine-row">
       <div class="no">${r.no}번</div>
-      <div class="meta">${krEsc(r.name)} · 사진 ${r.ids.length}장<br>${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')} 보냄</div>
+      <div class="meta">${krEsc(r.name)}<br>${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')} 보냄</div>
       <span class="chip ${st === 'loading' ? 'gone' : st}">${STATE_TEXT[st]}</span>
     </div>`;
   }).join('');
